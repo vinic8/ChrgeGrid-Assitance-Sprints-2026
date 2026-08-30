@@ -1,0 +1,10 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+evals/results/*.json
+evals/results/*.csv
+.streamlit/secrets.toml
+data/faiss_index/
+.claude/
+*.log

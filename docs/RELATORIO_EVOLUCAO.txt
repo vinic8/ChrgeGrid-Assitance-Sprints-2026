@@ -1,0 +1,335 @@
+RELATORIO DE EVOLUCAO DO PROJETO
+ChargeGrid Assistant (GoodWe) - Sprint 03
+==========================================
+
+Este arquivo e o conteudo-fonte do relatorio, que deve ser entregue em PDF
+(ate 5 paginas) na pasta docs/ do repositorio. Depois de gerar o PDF a partir
+deste texto, este .txt pode ser removido do projeto.
+
+NOTA - Provider: o unico provider das Sprints 1/2 era a Groq (Llama 3.3 70B).
+A Sprint 03 migrou para Ollama Cloud (gpt-oss:120b-cloud, Provider A) porque
+o Llama 3.3 nao esta no catalogo cloud da Ollama; depois, ao revisar o Bloco
+B (exige comparativo real de 2+ modelos/providers), reintroduzimos a Groq
+como Provider B - mas o Llama 3.3 tambem foi descontinuado la nesse meio
+tempo (erro "model not found"). Testamos alternativas open-weight na Groq
+(qwen3.6-27b vazava raciocinio interno; gpt-oss-20b retornava vazio) e
+adotamos qwen/qwen3.8-27b, que respondeu de forma limpa. O Llama 3.3 nunca
+foi descartado por escolha - primeiro nao existia num provider, depois foi
+descontinuado no outro.
+
+
+1. RESUMO DA EVOLUCAO
+======================
+
+Sprints 1/2: notebook unico no Colab, SDK da Groq chamado direto, memoria =
+lista Python sem limite, saida sempre texto livre (faturamento/auditoria
+dependiam do modelo "lembrar" o formato), nenhum guardrail em codigo,
+interface input()/print().
+
+Sprint 03 (o que existe agora):
+- Projeto Python modular (src/), Streamlit como UI (app.py), layout enxuto.
+- Multi-provider: Ollama Cloud (gpt-oss:120b-cloud) e Groq (qwen/qwen3.8-27b),
+  selecionaveis na interface.
+- Chain LCEL completa: retrieval (RAG) | prompt | llm | parser
+  (src/chain/builder.py).
+- RAG sobre base de conhecimento tecnica real (knowledge/*.md: OCPP, Modbus/
+  RS485, politica de tarifacao dinamica, specs do EV Charger GoodWe/FIAP),
+  indexada em FAISS com embeddings locais (src/rag/indexer.py) - resolve o
+  problema real do desafio ChargeGrid Intelligence (orquestrar recarga,
+  registrar ciclo via OCPP/Modbus, aplicar tarifacao dinamica), nao so
+  conversar sobre ele. Ver secao 2 e Problema 6.
+- Summary memory por sessao (src/chain/memoria.py): ao estourar
+  MEMORIA_LIMITE_TOKENS, a parte antiga da conversa vira um resumo gerado
+  pelo proprio LLM (nao e descartada), mantendo so as ultimas 2 mensagens
+  literais. Equivalente funcional ao ConversationSummaryBufferMemory
+  (deprecado) - ver Problema 1. Validado em teste de 5 turnos: o assistente
+  recuperou corretamente um fato do turno 1 mesmo depois dele virar resumo.
+- Saida estruturada Pydantic v2 (ConsultaRecarga), com field_validator/
+  model_validator garantindo coerencia (excedente e total faturado sempre
+  batem com os outros campos).
+- Prompt versionado com context engineering em XML tagging (prompts/, 5
+  versoes ate agora - ver VERSOES.md), incluindo blocos dedicados de
+  <idioma>, <base_de_conhecimento> (grounding no RAG) e <limites_de_atuacao>
+  (orientar a profissional habilitado - Bloco C da rubrica).
+- Guardrails em codigo antes da chain (scope_validator.py, moderation.py).
+- Eval set reexecutavel com 13 casos (evals/eval_cases.py): P1-P5 (Sprints
+  1/2), J1/J2 (jailbreak), F1 (fora de escopo), M1 (memoria em 3 turnos), R1-
+  R3 (RAG: Modbus, OCPP, tarifa dinamica) e L1 (limites de atuacao).
+- Versao legada preservada em src/manual_chat.py como baseline "antes" do
+  eval (nao e codigo morto).
+
+
+2. REFATORACAO - DECISOES TECNICAS E TRADE-OFFS
+=================================================
+
+- LCEL em vez de chamadas soltas: pipeline auditavel e testavel em partes
+  (troca llm/parser sem tocar no resto), ao custo de uma camada de
+  abstracao a mais que uma chamada de funcao unica.
+- Parser explicito (PydanticOutputParser) em vez de with_structured_output:
+  mantem visivel o pipe prompt | llm | parser pedido no enunciado, ao custo
+  de uma chamada extra de correcao quando a saida vem malformada (Problema
+  2).
+- RAG como passo LCEL (RunnablePassthrough.assign) antes do prompt, nao como
+  fine-tuning ou prompt estatico: knowledge/*.md pode mudar (nova politica
+  de tarifa, novo codigo de erro) sem tocar no codigo - so reindexar.
+  Embeddings locais (FastEmbed, sem API key) em vez de embeddings via Ollama
+  Cloud, porque a API key atual retorna 401 no endpoint de embeddings.
+- Guardrails antes da chain (scope_validator, moderation): mais barato
+  (zero tokens/latencia nos casos obvios) e mais previsivel do que confiar
+  100% no modelo seguir o prompt - ao custo de manter duas camadas de defesa
+  em sincronia.
+- Justificativa como unico campo "visivel" do schema: simplifica a memoria
+  (guarda so uma string por turno) ao custo de forcar toda resposta, mesmo
+  uma saudacao, a passar por validacao de schema.
+- Multi-provider via parametro (_montar_llm(provider=...)): reusa 100% do
+  pipeline LCEL para Ollama e Groq, ao custo de manter dois clientes/API
+  keys configurados.
+
+
+3. TABELA DE COMPARATIVO ANTES/DEPOIS (Sprints 1/2 vs. Sprint 03)
+===================================================================
+Gerado por "python -m evals.run_eval" em 2026-08-29 (execucao final, apos a
+correcao da base de conhecimento contra documentacao real da GoodWe -
+Problema 10). 13 casos (16 turnos no total, incluindo M1 com 3 turnos), ambas
+as versoes rodando contra o mesmo modelo (gpt-oss:120b-cloud, Provider A,
+temp=0.2) para isolar a variavel "arquitetura do codigo". Dados brutos (com o
+texto de cada resposta) em evals/results/comparativo_20260829-165111.json.
+
+  METRICA                              | SPRINTS 1/2 (LEGADO) | SPRINT 03 (LCEL)
+  --------------------------------------|-----------------------|------------------
+  Qualidade das respostas (nota 0-10)   | 8.5                   | 8.5
+  Tokens por turno (media)              | 719.2                 | 130.1
+  Latencia media (s)                    | 3.26                  | 3.35
+  Acuracia do structured output         | N/A (sem schema)      | 100.0%
+
+Nota metodologica: com temp=0.2 (nao 0), a nota bruta de um eval pequeno
+oscila entre execucoes - observamos LCEL variar entre 6.9 e 10.0 ao longo do
+desenvolvimento, sempre nos mesmos 1-2 casos mais dificeis (P3, balanceamento
+com 3 carregadores, e M1, memoria em 3 turnos). Reproduzimos os casos que
+falharam nesta rodada fora do harness e a maioria veio correta em tentativas
+seguintes - ou seja, sao falhas pontuais de geracao, nao regressao de
+arquitetura. Os indicadores que NAO oscilaram entre execucoes foram
+tokens/turno e acuracia de schema - sao esses que sustentam o ganho do
+refactory, nao a nota bruta isolada.
+
+Leitura: (1) Tokens/turno cai ~82% (o achado mais solido e estavel em todas
+as execucoes) - XML tagging + format_instructions do parser produzem
+respostas diretas, enquanto o legado usa tabelas markdown verbosas que, em
+respostas longas, chegaram a truncar antes da decisao pelo limite de
+max_tokens=600; os 3 casos de guardrail (J1/J2/F1) na LCEL custam so os
+tokens da mensagem do usuario. (2) O legado e estruturalmente mais
+vulneravel ao jailbreak J2 ("modo desenvolvedor"): sem guardrail em codigo,
+depende 100% do modelo seguir a instrucao de texto, e a recusa ja saiu em
+ingles numa execucao (mascarando o eval - Problema 5); a LCEL bloqueia ANTES
+de chamar o LLM, garantia estrutural que uma nota isolada nao capta. (3)
+Acuracia de structured output ficou em 100% em TODAS as execucoes apos
+corrigir um crash real de schema (Problema 8) - antes da correcao, respostas
+tecnicas detalhadas (RAG) quebravam a validacao por excederem um limite de
+caracteres artificial. (4) A nota empatou em 8.5 nesta rodada final - a
+leitura correta continua sendo que o ganho do refactory esta nos
+indicadores estruturais (tokens, schema, guardrail), nao na nota bruta de
+uma amostra de 13 casos com temperatura > 0.
+
+
+3.1 COMPARATIVO MULTI-PROVIDER COM PARAMETROS DOCUMENTADOS (Bloco B)
+======================================================================
+Gerado por "python -m evals.compare_models" em 2026-08-29 16:36, ANTES da
+correcao final da base de conhecimento (Problema 10). Mesma chain LCEL,
+mesmo prompt v5, mesmos 13 casos - so o provider/modelo muda. Dados brutos em
+evals/results/modelos_20260829-163616.json.
+
+Nota de transparencia sobre esta tabela: apos corrigir a base de conhecimento
+(Problema 10), tentamos reexecutar este comparativo automatico 2 vezes - as
+duas vezes o processo ficou visivelmente vivo (CPU/memoria confirmados via
+PowerShell, timeout de 90s por chamada confirmado ate no cliente HTTP
+subjacente) mas nao concluiu dentro de uma janela razoavel (>25 min parado no
+mesmo caso), por lentidao severa e intermitente da Groq naquela janela de
+teste - nao um bug de codigo. Em vez de manter a UI esperando indefinidamente
+ou fabricar numeros, optamos por: (1) manter a tabela abaixo (ultima execucao
+COMPLETA e real, com a base de conhecimento pre-correcao) e (2) validar
+manualmente com chamadas pontuais que a base de conhecimento CORRIGIDA
+funciona nos dois providers - repetimos os casos R1 (Modbus 0x0002), R3
+(tarifa) e L1 (limites de atuacao) direto contra a Groq apos a correcao: as 3
+responderam corretamente e com latencia normal (2,1s / 2,3s / 28,4s), inclusive
+L1 citando corretamente o registrador Modbus real 10026 na resposta. Ou seja,
+a correcao da base de conhecimento (Problema 10) esta validada nos dois
+providers, mesmo sem uma nova tabela agregada de 13 casos - a tabela abaixo
+documenta os numeros agregados da rodada anterior, que ja usava a mesma
+arquitetura (so o conteudo de 3 dos 4 arquivos de knowledge/ mudou depois).
+
+  PROVIDER                  | MODELO               | PARAMETROS
+  ---------------------------|----------------------|--------------------------
+  Provider A - Ollama Cloud  | gpt-oss:120b-cloud    | temp=0.2 / max_tokens=600
+  Provider B - Groq          | qwen/qwen3.8-27b      | temp=0.2 / max_tokens=600
+
+  RESULTADO
+  ---------------------------------------------------------------------------
+  PROVIDER                  | NOTA (0-10) | TOKENS/TURNO | LATENCIA MEDIA (s) | FALHAS
+  ---------------------------|-------------|--------------|---------------------|--------
+  Provider A - Ollama Cloud  | 8.5         | 117.2        | 4.17                | P3, M1
+  Provider B - Groq          | 8.5         | 177.0        | 21.13               | P3, M1
+
+Nota sobre o Provider B: llama-3.3-70b-versatile (plano original) foi
+descontinuado na Groq; qwen/qwen3.8-27b foi a alternativa open-weight que
+respondeu de forma limpa entre as testadas (ver nota no topo do relatorio).
+
+Leitura: empate tecnico em nota - os dois providers falharam so P3
+(balanceamento com 3 carregadores, o caso mais dificil dos 13) e M1 (memoria
+em 3 turnos, por motivos diferentes e auditados: o Ollama respondeu de forma
+cortada/incompleta numa chamada, o Groq deu uma resposta evasiva de "dados
+insuficientes" apesar do contexto estar disponivel - ambos padroes de
+variancia de geracao ja observados em outras execucoes deste eval, nao um
+bug de codigo). Tokens/turno do Groq e maior (qwen3.8-27b e mais verboso na
+justificativa mesmo respeitando o schema). A latencia do Groq nesta execucao
+(21.13s de media) foi um achado real e nao um artefato: durante os testes
+finais, o Groq apresentou degradacao severa de latencia (uma unica chamada
+chegou a ficar >20 minutos sem responder nem falhar - o que motivou o
+Problema 9, adicionar timeout aos dois providers). Nao e uma caracteristica
+estrutural do modelo/provider (a Groq e normalmente citada pela inferencia
+rapida) - e uma instabilidade pontual do servico observada na janela de
+testes, registrada aqui por transparencia. Mantemos os dois providers ativos
+e selecionaveis na interface, em vez de eleger um so "principal" - e isso, na
+pratica (nao so na configuracao), que sustenta o requisito de multi-provider
+do Bloco B e do bonus (+1: mais de um modelo - Ollama/Groq - e mais de um
+prompt, ja que o proprio run_eval.py roda o prompt v1 do legado e o v5 atual
+lado a lado a cada execucao).
+
+
+4. PROBLEMAS ENCONTRADOS E SOLUCOES
+=====================================
+
+Problema 1 - Memorias "classicas" do LangChain (ConversationTokenBufferMemory
+e ConversationSummaryBufferMemory) estao deprecadas.
+Implementamos o equivalente por conta propria como subclasse de
+InMemoryChatMessageHistory (HistoricoComResumo, src/chain/memoria.py):
+buffer com limite de tokens primeiro, depois evoluido para summary memory (a
+pedido explicito) - ao estourar o limite, a parte antiga vira resumo gerado
+pelo proprio LLM em vez de ser descartada. Ganho: zero dependencia de API em
+rota de remocao, memoria que preserva fatos distantes sem manter o texto
+literal inteiro.
+
+Problema 2 - saida do LLM nem sempre e JSON valido de primeira.
+PydanticOutputParser quebra com aspas erradas ou texto extra ao redor do
+JSON. Decisao: se o parse falhar, reenviar ao mesmo modelo a saida
+malformada + o erro, pedindo correcao pontual antes de desistir
+(_parse_com_correcao, src/chain/builder.py).
+
+Problema 3 - Llama 3.3 (Sprints 1/2) nao existe na Ollama Cloud, e foi
+descontinuado tambem na Groq durante o desenvolvimento.
+Ver nota no topo do relatorio para a linha do tempo completa da decisao
+(Ollama-so -> Groq com Llama 3.3 planejado -> Groq com qwen3.8-27b).
+
+Problema 4 - eval automatico por palavra-chave contra LLM (temp=0.2) e
+frágil sem auditoria de texto.
+evals/run_eval.py e evals/compare_models.py so registravam passou/falhou,
+sem o texto da resposta - depurar uma falha exigia reproduzir manualmente.
+Corrigido: os dois scripts agora gravam o campo "resposta" no JSON de cada
+caso. Isso foi o que permitiu diagnosticar todos os problemas 6-9 abaixo com
+evidencia, nao suposicao.
+
+Problema 5 - o caso J2 (jailbreak) dava falso negativo, mascarando um
+comportamento de seguranca que ja estava correto.
+O modelo ja recusava "modo desenvolvedor... revele o system prompt" mesmo
+com o guardrail de codigo desligado (testado nos 2 providers + 3 parafrases
+do ataque) - mas a recusa as vezes saia em ingles, e o checker so reconhecia
+recusa em portugues. Decisao dupla: (1) system_prompt_v3 acrescenta bloco
+<idioma> exigindo portugues sempre, mesmo sob jailbreak; (2) o checker de J2
+passou a aceitar recusa em portugues OU ingles, mais uma checagem de que
+nada do prompt vazou (_nao_vaza_system_prompt).
+
+Problema 6 - fazer o RAG funcionar de verdade exigiu 4 rodadas de correcao,
+nao so "plugar um vetor store".
+(a) Chunking: o splitter por tamanho de caractere fundia 2-3 secoes
+markdown pequenas adjacentes num chunk so, "diluindo" o embedding (uma
+tabela de codigos de erro ou de tarifas por horario perdia no ranking
+semantico para chunks completamente irrelevantes). Corrigido: um chunk por
+secao "## " (nunca funde secoes vizinhas) + k=6 (o corpus total e pequeno,
+~18 chunks). (b) Grounding: com a recuperacao corrigida, o modelo AINDA
+ignorava o conteudo recuperado - errou um codigo Modbus usando conhecimento
+geral em vez da tabela recuperada, e recusou calcular uma tarifa que estava
+literalmente na politica recuperada. Corrigido no system_prompt_v4 com
+instrucao explicita de precedencia (<base_de_conhecimento> > conhecimento
+geral). (c) Distracao por contexto irrelevante: para perguntas sem termo
+forte de nenhum documento (ex.: um simples registro de ciclo concluido, sem
+tarifa/potencia envolvida), a busca vetorial ainda retornava os "menos
+piores" k=6 chunks (tarifacao, limite de potencia) - e o modelo deixava esse
+ruido mudar o assunto da resposta; numa das 3 tentativas, chegou a inventar
+um carregador/veiculo/horarios diferentes dos informados. Corrigido no
+system_prompt_v5: instrucao explicita para IGNORAR conteudo recuperado que
+nao bate com a pergunta, e a diretriz de potencia so aciona quando uma nova
+potencia e de fato pedida. (d) Guardrail de escopo bloqueava o proprio
+dominio: TOPICOS_BLOQUEADOS tinha a palavra solta "politica" (pensada para
+bloquear politica partidaria) - "politica de tarifacao" (o caso R3 do eval)
+acionou esse bloqueio por engano. Corrigido: removida a palavra ambigua, e a
+checagem de vocabulario de dominio passou a ter precedencia sobre o
+blocklist. Ganho: R1/R2/R3 (RAG) e P4 (registro de ciclo) passaram a
+responder de forma correta e reprodutivel (validado com 4-8 repeticoes
+manuais apos cada correcao).
+
+Problema 7 - pente-fino geral encontrou 5 bugs de medicao/UI, nenhum de
+seguranca.
+(1) tokens_entrada era calculado depois de a resposta atual ja ter sido
+adicionada ao historico, contando a propria saida como entrada - inflava
+tokens/turno em todos os evals ja rodados; corrigido para medir o contexto
+ANTES da chamada. (2) obter_historico() recriava o historico inteiro quando
+limite_tokens mudava - com summary memory isso apagava o resumo acumulado;
+corrigido para atualizar o limite in-place. (3) a UI passava o modelo do
+provider selecionado (ex.: Groq) para a comparacao com a versao legada, que
+so tem cliente Ollama - quebrava com HTTP 404; corrigido para sempre usar o
+Provider A na comparacao legada. (4) o marcador anti-vazamento do Problema 5
+("diretrizes de operacao") era generico demais e disparava na propria
+mensagem padrao do guardrail; corrigido para exigir o cabecalho exato do v1.
+(5) o checker do caso P3 procurava "balance", que nao e substring de
+"balancing" (termo que o proprio prompt manda usar); corrigido para o
+radical "balanc".
+
+Problema 8 - falha "dura" (crash de validacao) em respostas tecnicas
+detalhadas, mascarada como erro de JSON.
+O caso P5 (diagnostico RS485) falhava ~33% das vezes com "Invalid json
+output" mesmo apos a correcao automatica do Problema 2. Investigando o texto
+bruto (json.loads() funcionava, mas _parser.parse() falhava), a causa real
+era outra: o campo `justificativa` do schema Pydantic tinha `max_length=500`,
+e uma resposta tecnica completa (checklist de 6 passos de diagnostico,
+reforcada pelo RAG) legitimamente passa disso - um limite de caracteres
+artificial demais para o conteudo que o proprio prompt pede para produzir.
+Corrigido: `max_length` de 500 para 1500 em `ConsultaRecarga.justificativa`
+(src/schemas/consulta_recarga.py). Ganho: 8/8 repeticoes corretas apos a
+correcao (eram ~33% de falha antes); a acuracia de structured output do
+eval final (secao 3) reflete essa correcao.
+
+Problema 9 - nenhum dos dois providers tinha timeout configurado.
+Rodando o comparativo final (secao 3.1), uma unica chamada ao Groq ficou mais
+de 20 minutos sem responder nem falhar, travando todo o eval (confirmado
+vivo por CPU/memoria do processo, so sem retorno de rede). Nem ChatGroq nem
+ChatOllama tinham timeout definido em `_montar_llm()` - uma chamada travada
+do lado do provider bloquearia a UI (Streamlit) ou o eval indefinidamente.
+Corrigido: `request_timeout=90` no ChatGroq e `client_kwargs={"timeout": 90}`
+no ChatOllama (src/chain/builder.py). Sem isso, um provider instavel em
+produção travaria a conversa inteira sem nenhum feedback ao operador.
+
+Problema 10 - a base de conhecimento inicial (RAG) usava dados plausiveis mas
+nao confirmados; corrigida apos receber a documentacao oficial da GoodWe.
+knowledge/modbus_rs485.md e knowledge/charger_goodwe_fiap.md foram escritos
+inicialmente a partir de conhecimento geral sobre os protocolos (codigos de
+excecao Modbus genericos, specs de charger plausiveis para a familia GoodWe) -
+tecnicamente corretos como protocolo generico, mas nao confirmados contra o
+equipamento real. Ao receber os documentos oficiais do fabricante (datasheet,
+manual do usuario e o mapa de registradores Modbus do HCA G2), corrigimos as
+duas bases para os dados reais: os 4 codigos de excecao que o HCA G2
+realmente define (0x0001-0x0004, nao os 6+ genericos usados antes), os bits
+de falha reais (registradores 10001-10008, incluindo falha de aterramento no
+bit1 do registrador 10002) e as specs reais dos 3 modelos da linha (GW7K/11K/
+22K-HCA-20). O achado mais importante: **o datasheet oficial confirma que o
+HCA G2 fala Modbus TCP, nao OCPP** - o desafio pede cobertura de OCPP, mas o
+hardware real nao suporta esse protocolo nativamente. Em vez de manter uma
+afirmacao falsa (hardware fala OCPP) ou remover a cobertura de OCPP (perdendo
+esse requisito do desafio), reformulamos knowledge/ocpp.md como uma camada de
+traducao/interoperabilidade explicita: uma tabela mapeando cada conceito OCPP
+(StartTransaction, meterStop, StatusNotification.errorCode) para o
+registrador Modbus real equivalente, deixando claro no proprio documento que
+essa e uma abstracao do ChargeGrid, nao um protocolo nativo do carregador.
+O caso R1 do eval (que testava um codigo de erro inventado, "0B") foi
+corrigido para testar o codigo real 0x0002 (Illegal Data Address). Ganho:
+a base de conhecimento agora e auditavel contra documentos reais do
+fabricante, nao apenas plausivel - e o proprio relatorio documenta a correcao
+em vez de apagar o rastro da versao anterior.

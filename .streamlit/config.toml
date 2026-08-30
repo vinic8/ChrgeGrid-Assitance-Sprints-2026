@@ -1,0 +1,14 @@
+# Paleta de cores GoodWe: área de chat clara (legibilidade) + barra lateral
+# escura com o vermelho da marca em destaque (mesmo fundo da logo oficial).
+[theme]
+primaryColor = "#ED1C24"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F5F5F5"
+textColor = "#1A1A1A"
+font = "sans serif"
+
+[theme.sidebar]
+primaryColor = "#ED1C24"
+backgroundColor = "#0D0D0D"
+secondaryBackgroundColor = "#1F1F1F"
+textColor = "#FFFFFF"
