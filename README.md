@@ -19,7 +19,7 @@ tabela comparativa antes/depois, comparativo multi-provider e problemas/soluçõ
 interface — **Provider A: Ollama Cloud** (`gemma4:cloud`) e **Provider B: Groq**
 (`qwen/qwen3.8-27b`). O plano era reintroduzir o Llama 3.3 das Sprints 1/2 via Groq,
 mas esse modelo foi descontinuado nesse provider durante o desenvolvimento — ver
-`docs/RELATORIO_EVOLUCAO.txt` para o detalhamento da troca.
+`docs/RELATORIO_EVOLUCAO.pdf` para o detalhamento da troca.
 
 ## O que mudou desde as Sprints 1/2
 
