@@ -1,6 +1,6 @@
 """Contagem de tokens (aula 04 — medição de tokens / context engineering).
 
-gpt-oss e qwen3.5 não têm um tokenizer público no tiktoken (que só cobre a família
+gemma4 e qwen3.5 não têm um tokenizer público no tiktoken (que só cobre a família
 OpenAI). Usamos `o200k_base` (tokenizer do GPT-4o) como aproximação — é a mesma
 prática usada no mercado para "orçar" tokens de modelos open-weight sem tokenizer
 próprio disponível em Python. Documentado aqui para não virar suposição escondida:

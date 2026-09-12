@@ -14,7 +14,7 @@ import uuid
 import streamlit as st
 
 from src.chain.builder import PROVIDERS, conversar, modelo_padrao
-from src.chain.memoria import limpar_sessao, obter_historico
+from src.chain.memoria import limpar_sessao, obter_sessao_existente, total_tokens
 from src.config import load_settings
 from src.manual_chat import conversar_legado, limpar_sessao_legada
 
@@ -55,15 +55,17 @@ with st.sidebar:
         )
         ignorar_guardrails = st.toggle("Desativar guardrails (debug)", value=False)
 
-        historico = obter_historico(st.session_state.session_id, settings.memoria_limite_tokens)
+        historico = obter_sessao_existente(st.session_state.session_id)
+        tokens_atual = total_tokens(historico) if historico else 0
         st.caption(
-            f"Memória: summary memory (resumo automático via LLM) · "
-            f"{historico.total_tokens()}/{settings.memoria_limite_tokens} tokens"
+            f"Memória: ConversationSummaryBufferMemory (LangChain) · "
+            f"{tokens_atual}/{settings.memoria_limite_tokens} tokens"
         )
-        st.progress(min(historico.total_tokens() / settings.memoria_limite_tokens, 1.0))
-        if historico.resumo:
+        st.progress(min(tokens_atual / settings.memoria_limite_tokens, 1.0))
+        resumo_atual = historico.moving_summary_buffer if historico else ""
+        if resumo_atual:
             st.caption("Resumo atual da conversa:")
-            st.text(historico.resumo)
+            st.text(resumo_atual)
 
     if provider == "ollama" and not settings.ollama_api_key:
         st.error("OLLAMA_API_KEY não configurada no .env.")

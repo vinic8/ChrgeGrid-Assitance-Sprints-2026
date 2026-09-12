@@ -16,7 +16,7 @@ tabela comparativa antes/depois, comparativo multi-provider e problemas/soluçõ
 [`docs/RELATORIO_EVOLUCAO.txt`](docs/RELATORIO_EVOLUCAO.txt).
 
 **Multi-provider**: o chatbot roda sobre dois providers, selecionáveis na própria
-interface — **Provider A: Ollama Cloud** (`gpt-oss:120b-cloud`) e **Provider B: Groq**
+interface — **Provider A: Ollama Cloud** (`gemma4:cloud`) e **Provider B: Groq**
 (`qwen/qwen3.8-27b`). O plano era reintroduzir o Llama 3.3 das Sprints 1/2 via Groq,
 mas esse modelo foi descontinuado nesse provider durante o desenvolvimento — ver
 `docs/RELATORIO_EVOLUCAO.txt` para o detalhamento da troca.
@@ -27,8 +27,8 @@ mas esse modelo foi descontinuado nesse provider durante o desenvolvimento — v
 |---|---|---|
 | Execução | Google Colab, célula a célula | Python modular + Streamlit |
 | Orquestração | Chamadas diretas ao SDK da Groq | LangChain LCEL (`prompt \| llm \| parser`) |
-| Modelo/Provider | Llama 3.3 70B via Groq (único provider) | Multi-provider: `gpt-oss:120b-cloud` via **Ollama Cloud** + `qwen/qwen3.8-27b` via **Groq** |
-| Memória | Lista de mensagens sem limite | Summary memory por sessão (ver seção "Memória conversacional") |
+| Modelo/Provider | Llama 3.3 70B via Groq (único provider) | Multi-provider: `gemma4:cloud` via **Ollama Cloud** + `qwen/qwen3.8-27b` via **Groq** |
+| Memória | Lista de mensagens sem limite | `ConversationSummaryBufferMemory` por sessão (ver seção "Memória conversacional") |
 | Conhecimento técnico | Só o que estava no prompt (texto corrido) | RAG sobre `knowledge/*.md` (OCPP, Modbus, tarifação dinâmica, specs reais GoodWe) |
 | Saída | Texto livre | Schema Pydantic v2 validado (`ConsultaRecarga`) |
 | Prompt | Texto corrido | Versionado, com XML tagging (`prompts/`) |
@@ -63,7 +63,7 @@ SPRINT-03-IA/
 │   ├── manual_chat.py            # Reconstrução da versão manual (Sprints 1/2) p/ comparativo
 │   ├── chain/
 │   │   ├── builder.py            # Chain LCEL retrieval | prompt | llm | parser + guardrails
-│   │   └── memoria.py            # Summary memory por sessão
+│   │   └── memoria.py            # ConversationSummaryBufferMemory (LangChain) por sessão
 │   ├── rag/
 │   │   └── indexer.py            # Indexação FAISS de knowledge/*.md e retriever
 │   ├── schemas/
@@ -150,7 +150,7 @@ relatório §3.1.
 |---|---|---|
 | `OLLAMA_API_KEY` | Chave da Ollama Cloud — Provider A (https://ollama.com/settings/keys) | ✅ Sim |
 | `OLLAMA_HOST` | Host da API (default `https://ollama.com`) | Não |
-| `MODEL_PRIMARY` | Modelo do Provider A (default `gpt-oss:120b-cloud`) | Não |
+| `MODEL_PRIMARY` | Modelo do Provider A (default `gemma4:cloud`) | Não |
 | `GROQ_API_KEY` | Chave da Groq — Provider B (https://console.groq.com/keys) | ✅ Sim |
 | `MODEL_GROQ` | Modelo do Provider B (default `qwen/qwen3.8-27b`) | Não |
 | `TEMPERATURE` | Temperatura de geração, usada nos dois providers (default `0.2`) | Não |
@@ -169,23 +169,33 @@ venv com uma versão mais testada (3.11–3.12) — `py -3.12 -m venv .venv`, se
 
 ## Memória conversacional
 
-O chatbot usa **summary memory** (`src/chain/memoria.py`, classe `HistoricoComResumo`):
-guarda o histórico literal da sessão até `MEMORIA_LIMITE_TOKENS` (default 1500) e,
-ao estourar, envia a parte mais antiga da conversa para o próprio LLM (o mesmo
-provider/modelo em uso) gerar um **resumo em texto livre**, que substitui as
-mensagens resumidas. As últimas 2 mensagens (1 turno) sempre ficam literais — só o
-que já saiu dessa janela recente é que vira resumo. A cada novo turno, se o resumo
-já existir, ele é atualizado (resumo anterior + trecho novo → resumo atualizado),
-não é regerado do zero.
+O chatbot usa **`ConversationSummaryBufferMemory`**, a classe do próprio LangChain
+(`src/chain/memoria.py`, importada de `langchain_classic.memory` — requisito
+obrigatório do desafio). Ela guarda o histórico literal da sessão até
+`MEMORIA_LIMITE_TOKENS` (default 1500) e, ao estourar, envia a parte mais antiga da
+conversa para o próprio LLM (o mesmo provider/modelo em uso) gerar um **resumo em
+texto livre**, que substitui as mensagens resumidas — comportamento nativo da
+classe (`save_context` → `prune()` → `predict_new_summary()`), não reimplementado
+à mão. O prompt de resumo (`_PROMPT_RESUMO`) foi customizado em português, pedindo
+para preservar fatos operacionais (IDs de carregador/veículo, potências, limites,
+tarifas, decisões) e descartar conversa fiada.
 
-Funcionalmente é o equivalente ao `ConversationSummaryBufferMemory` do LangChain
-clássico, mas implementado como subclasse de `InMemoryChatMessageHistory` (a peça
-viva do LCEL) porque aquela classe está deprecada e marcada para remoção em
-LangChain 2.0. Ver decisão completa em `docs/RELATORIO_EVOLUCAO.txt`, Problema 1.
-Na interface, o expander "Avançado" mostra o resumo atual da sessão sempre que ele
-existir. A memória é por `session_id` (`st.session_state.session_id` no Streamlit) —
-cada aba/sessão do navegador tem seu próprio histórico, isolado em memória de
-processo (não persiste em disco nem banco).
+**Nota de depreciação (decisão consciente)**: `ConversationSummaryBufferMemory` está
+marcada para remoção no LangChain 2.0 (movida para `langchain_classic`; o próprio
+time recomenda `RunnableWithMessageHistory`/checkpointing como substituto). Optamos
+por usá-la mesmo assim porque é um requisito explícito do desafio, aceitando o aviso
+de depreciação em troca de aderência literal. Detalhe técnico: a classe conta tokens
+via `llm.get_num_tokens_from_messages`, que por padrão exige o pacote `transformers`
+(tokenizer GPT-2 baixado da internet) — para não introduzir essa dependência pesada,
+`_MemoriaChargeGrid` (subclasse de `ConversationSummaryBufferMemory`, mesmo tipo,
+só esse um método trocado) substitui só a contagem de tokens por `tiktoken`
+(`src/tokens.py`), mantendo o resto do comportamento herdado sem alteração.
+
+Na interface, o expander "Avançado" mostra o resumo atual da sessão
+(`memoria.moving_summary_buffer`) sempre que ele existir. A memória é por
+`session_id` (`st.session_state.session_id` no Streamlit) — cada aba/sessão do
+navegador tem seu próprio histórico, isolado em memória de processo (não persiste
+em disco nem banco).
 
 ## RAG — base de conhecimento (`knowledge/`)
 
@@ -218,17 +228,17 @@ conversa sobre ele) consultando uma base de conhecimento técnica antes de respo
 
 As duas primeiras bases foram reescritas depois de receber a documentação
 oficial da GoodWe (datasheet, manual e mapa Modbus) — a primeira versão usava
-códigos de erro plausíveis mas não confirmados; ver Problema 10 do relatório
-para o antes/depois dessa correção.
+códigos de erro plausíveis mas não confirmados, corrigidos para os dados reais
+do equipamento.
 
 Arquitetura (`src/rag/indexer.py` + `src/chain/builder.py`): os `.md` são divididos
 em chunks **por seção** (nunca fundindo seções vizinhas — ver decisão no relatório,
-Problema 7), embarcados com FastEmbed (`paraphrase-multilingual-MiniLM-L12-v2`,
+Problema 4), embarcados com FastEmbed (`paraphrase-multilingual-MiniLM-L12-v2`,
 roda em CPU, sem API key) e indexados em FAISS (`data/faiss_index/`). A cada
 pergunta, a chain LCEL recupera os `k=6` chunks mais relevantes e os injeta no
 prompt como `<base_de_conhecimento>` (`system_prompt_v5.md`), com instrução
 explícita para o modelo tratar esse conteúdo como fonte de verdade — sem essa
-instrução, testamos e o modelo **ignorava** a política recuperada (ver Problema 6
+instrução, testamos e o modelo **ignorava** a política recuperada (ver Problema 4
 do relatório). As fontes usadas em cada resposta aparecem na UI (📚) e em
 `RespostaChat.fontes_rag`.
 

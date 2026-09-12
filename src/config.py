@@ -38,7 +38,7 @@ def load_settings() -> Settings:
     return Settings(
         ollama_api_key=os.getenv("OLLAMA_API_KEY", ""),
         ollama_host=os.getenv("OLLAMA_HOST", "https://ollama.com"),
-        model_primary=os.getenv("MODEL_PRIMARY", "gpt-oss:120b-cloud"),
+        model_primary=os.getenv("MODEL_PRIMARY", "gemma4:cloud"),
         groq_api_key=os.getenv("GROQ_API_KEY", ""),
         model_groq=os.getenv("MODEL_GROQ", "qwen/qwen3.8-27b"),
         temperature=float(os.getenv("TEMPERATURE", "0.2")),

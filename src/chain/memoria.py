@@ -1,92 +1,137 @@
-"""Memória conversacional por sessão: summary memory via LLM (Aula 02).
+"""Memória conversacional por sessão: `ConversationSummaryBufferMemory` (LangChain).
 
-Nota de decisão: o material de referência cita `ConversationSummaryBufferMemory`
-(a versão com resumo do `ConversationTokenBufferMemory`). Essa classe foi movida
-para `langchain_classic` e está deprecada rumo à remoção em LangChain 2.0 (o
-próprio time do LangChain recomenda `RunnableWithMessageHistory` como substituto).
-Em vez de depender de uma API em rota de remoção, reimplementamos o mesmo
-comportamento sobre `InMemoryChatMessageHistory`, que é a peça viva do ecossistema
-LCEL: ao estourar `limite_tokens`, as mensagens mais antigas são resumidas por um
-LLM (o mesmo provider/modelo da conversa) e substituídas por um resumo compacto em
-texto livre, mantendo as últimas mensagens literais. Ver
-`docs/RELATORIO_EVOLUCAO.txt`, seção 4 (problema 1), para o racional completo e o
-histórico da versão anterior (buffer sem resumo).
+Requisito obrigatório do desafio: a classe oficial do LangChain
+(`langchain_classic.memory.ConversationSummaryBufferMemory`), aceitando o aviso de
+depreciação — está descontinuada rumo à remoção no LangChain 2.0 (movida para
+`langchain_classic`; o próprio time do LangChain recomenda
+`RunnableWithMessageHistory`/checkpointing como substituto) — em troca de aderência
+literal ao requisito.
+
+Detalhe de integração: `ConversationSummaryBufferMemory.prune()` conta tokens via
+`self.llm.get_num_tokens_from_messages(...)`. Nem `ChatOllama` nem `ChatGroq` têm
+tokenizer próprio, então isso cai no fallback padrão do LangChain, que exige o pacote
+`transformers` (tokenizer GPT-2 baixado da internet na primeira chamada) — uma
+dependência pesada e com acesso de rede que o projeto evita deliberadamente em todo o
+resto (`src/tokens.py` usa `tiktoken`, local, e o FastEmbed do RAG foi escolhido por
+não precisar de API/download externo). `_MemoriaChargeGrid` abaixo é a mesma
+`ConversationSummaryBufferMemory` exigida — só troca a contagem de tokens do
+`prune()` por `contar_tokens` (tiktoken), mantendo o resto do comportamento herdado
+sem alteração.
 """
 from __future__ import annotations
 
-from langchain_core.chat_history import InMemoryChatMessageHistory
+from langchain_classic.memory import ConversationSummaryBufferMemory
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
+from langchain_core.messages import BaseMessage
+from langchain_core.prompts import PromptTemplate
 
 from src.tokens import contar_tokens
 
-MENSAGENS_RECENTES_MANTIDAS = 2  # últimas N mensagens (1 turno) sempre literais
 
-_PROMPT_RESUMO = """Resuma a conversa abaixo entre um Operador Comercial de eletropostos \
-GoodWe e o ChargeGrid Assistant. Preserve fatos operacionais relevantes (IDs de \
-carregadores e veículos, potências, limites de rede, valores/tarifas de faturamento, \
-decisões já tomadas) e descarte saudações ou conversa fiada. Seja conciso (no máximo \
-5 frases), em português.
+class _MemoriaChargeGrid(ConversationSummaryBufferMemory):
+    """`ConversationSummaryBufferMemory` com contagem de tokens via tiktoken."""
 
-{resumo_anterior}Novas mensagens a incorporar ao resumo:
-{trecho}
+    def _tokens_do_buffer(self, buffer: list[BaseMessage]) -> int:
+        return sum(contar_tokens(str(m.content)) for m in buffer)
 
-Resumo atualizado:"""
+    def prune(self) -> None:
+        buffer = self.chat_memory.messages
+        curr_buffer_length = self._tokens_do_buffer(buffer)
+        if curr_buffer_length > self.max_token_limit:
+            pruned_memory = []
+            while curr_buffer_length > self.max_token_limit:
+                pruned_memory.append(buffer.pop(0))
+                curr_buffer_length = self._tokens_do_buffer(buffer)
+            self.moving_summary_buffer = self.predict_new_summary(
+                pruned_memory, self.moving_summary_buffer
+            )
+
+    async def aprune(self) -> None:
+        buffer = self.chat_memory.messages
+        curr_buffer_length = self._tokens_do_buffer(buffer)
+        if curr_buffer_length > self.max_token_limit:
+            pruned_memory = []
+            while curr_buffer_length > self.max_token_limit:
+                pruned_memory.append(buffer.pop(0))
+                curr_buffer_length = self._tokens_do_buffer(buffer)
+            self.moving_summary_buffer = await self.apredict_new_summary(
+                pruned_memory, self.moving_summary_buffer
+            )
+
+_PROMPT_RESUMO = PromptTemplate(
+    input_variables=["summary", "new_lines"],
+    template="""Resuma progressivamente a conversa abaixo entre um Operador Comercial \
+de eletropostos GoodWe e o ChargeGrid Assistant. Preserve fatos operacionais relevantes \
+(IDs de carregadores e veículos, potências, limites de rede, valores/tarifas de \
+faturamento, decisões já tomadas) e descarte saudações ou conversa fiada. Seja conciso \
+(no máximo 5 frases), em português.
+
+Resumo atual:
+{summary}
+
+Novas linhas da conversa:
+{new_lines}
+
+Novo resumo:""",
+)
+
+_SESSOES: dict[str, ConversationSummaryBufferMemory] = {}
 
 
-class HistoricoComResumo(InMemoryChatMessageHistory):
-    """Histórico com summary memory: resumo em `self.resumo`, cauda literal em `self.messages`."""
+def obter_historico(session_id: str, limite_tokens: int, llm: BaseChatModel) -> ConversationSummaryBufferMemory:
+    """Memória da sessão: uma `ConversationSummaryBufferMemory` por `session_id`.
 
-    limite_tokens: int = 1500
-    resumo: str = ""
-
-    def total_tokens(self) -> int:
-        das_mensagens = sum(contar_tokens(str(m.content)) for m in self.messages)
-        return das_mensagens + contar_tokens(self.resumo)
-
-    def mensagens_para_prompt(self) -> list[BaseMessage]:
-        """Histórico efetivo enviado à chain: resumo (se houver) + cauda literal."""
-        if not self.resumo:
-            return list(self.messages)
-        return [SystemMessage(f"Resumo da conversa até aqui: {self.resumo}"), *self.messages]
-
-    def registrar_turno(self, humano: HumanMessage, ai: AIMessage, llm: BaseChatModel) -> None:
-        """Adiciona o turno e, se necessário, resume a parte mais antiga via `llm`."""
-        self.add_messages([humano, ai])
-        self._resumir_se_necessario(llm)
-
-    def _resumir_se_necessario(self, llm: BaseChatModel) -> None:
-        if self.total_tokens() <= self.limite_tokens:
-            return
-        if len(self.messages) <= MENSAGENS_RECENTES_MANTIDAS:
-            return  # nada "antigo" sobrando para resumir, só a cauda recente
-
-        a_resumir = self.messages[:-MENSAGENS_RECENTES_MANTIDAS]
-        trecho = "\n".join(
-            f"{'Operador' if isinstance(m, HumanMessage) else 'Assistente'}: {m.content}"
-            for m in a_resumir
+    `llm` é (re)atribuído a cada chamada, não só na criação, porque o operador pode
+    trocar de provider/modelo no meio da mesma sessão (seletor multi-provider da UI) —
+    essa classe usa `llm` tanto para contar tokens (`get_num_tokens_from_messages`,
+    cálculo local, sem chamada de rede) quanto para gerar o resumo quando o buffer
+    ultrapassa `max_token_limit` (aí sim uma chamada real ao modelo).
+    """
+    memoria = _SESSOES.get(session_id)
+    if memoria is None:
+        memoria = _MemoriaChargeGrid(
+            llm=llm,
+            prompt=_PROMPT_RESUMO,
+            max_token_limit=limite_tokens,
+            return_messages=True,
         )
-        resumo_anterior = f"Resumo anterior: {self.resumo}\n\n" if self.resumo else ""
-        prompt = _PROMPT_RESUMO.format(resumo_anterior=resumo_anterior, trecho=trecho)
-
-        resposta = llm.invoke(prompt)
-        self.resumo = str(resposta.content).strip()
-        self.messages = self.messages[-MENSAGENS_RECENTES_MANTIDAS:]
-
-
-_SESSOES: dict[str, HistoricoComResumo] = {}
+        _SESSOES[session_id] = memoria
+    else:
+        memoria.llm = llm
+        memoria.max_token_limit = limite_tokens
+    return memoria
 
 
-def obter_historico(session_id: str, limite_tokens: int) -> HistoricoComResumo:
-    historico = _SESSOES.get(session_id)
-    if historico is None:
-        historico = HistoricoComResumo(limite_tokens=limite_tokens)
-        _SESSOES[session_id] = historico
-    elif historico.limite_tokens != limite_tokens:
-        # Atualiza o limite em vigor sem descartar mensagens/resumo já acumulados
-        # (recriar o objeto aqui apagaria a memória da sessão inteira).
-        historico.limite_tokens = limite_tokens
-    return historico
+def mensagens_para_prompt(memoria: ConversationSummaryBufferMemory) -> list[BaseMessage]:
+    """Histórico efetivo enviado à chain: resumo (se houver) + cauda literal.
+
+    `load_memory_variables` já devolve isso pronto quando `return_messages=True`:
+    o resumo vira um `SystemMessage` prefixado às mensagens literais mantidas no
+    buffer (ver `ConversationSummaryBufferMemory.load_memory_variables`).
+    """
+    return memoria.load_memory_variables({})[memoria.memory_key]
+
+
+def total_tokens(memoria: ConversationSummaryBufferMemory) -> int:
+    """Tokens (aproximação via tiktoken, `src/tokens.py`) do histórico efetivo atual."""
+    return sum(contar_tokens(str(m.content)) for m in mensagens_para_prompt(memoria))
+
+
+def registrar_turno(memoria: ConversationSummaryBufferMemory, entrada: str, resposta: str) -> None:
+    """Adiciona o turno e, se necessário, resume a parte mais antiga (`save_context`
+    já aciona `prune()` internamente — ver `ConversationSummaryBufferMemory.save_context`).
+    """
+    memoria.save_context({"input": entrada}, {"output": resposta})
+
+
+def obter_sessao_existente(session_id: str) -> ConversationSummaryBufferMemory | None:
+    """Memória já criada da sessão, sem instanciar uma nova (nem exigir `llm`).
+
+    Usado pela UI só para exibir estatísticas (tokens, resumo) no expander
+    "Avançado" antes do primeiro turno — nesse ponto ainda não há motivo pra
+    montar um `llm` só para popular o campo obrigatório de `obter_historico`.
+    """
+    return _SESSOES.get(session_id)
 
 
 def limpar_sessao(session_id: str) -> None:

@@ -6,7 +6,7 @@ mão, sem schema, sem guardrail).
 
 Multi-provider (Bloco B): a mesma chain roda sobre dois providers diferentes,
 selecionados por `provider`:
-- **Provider A** — Ollama Cloud, modelo `MODEL_PRIMARY` (default `gpt-oss:120b-cloud`).
+- **Provider A** — Ollama Cloud, modelo `MODEL_PRIMARY` (default `gemma4:cloud`).
 - **Provider B** — Groq, modelo `MODEL_GROQ` (default `qwen/qwen3.8-27b`). O plano
   era reintroduzir o Llama 3.3 (Sprints 1/2) via Groq, mas ele foi descontinuado
   nesse provider; `qwen/qwen3.8-27b` é a alternativa open-weight que respondeu de
@@ -19,14 +19,14 @@ import time
 from dataclasses import dataclass
 
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from langchain_groq import ChatGroq
 from langchain_ollama import ChatOllama
 
-from src.chain.memoria import obter_historico
+from src.chain.memoria import mensagens_para_prompt, obter_historico, registrar_turno, total_tokens
 from src.config import extract_system_prompt_body, load_settings
 from src.guardrails.moderation import MENSAGEM_RECUSA_PADRAO, checar_jailbreak
 from src.guardrails.scope_validator import checar_escopo
@@ -178,15 +178,15 @@ def conversar(
     estoura `MEMORIA_LIMITE_TOKENS`) para que o próximo turno tenha o contexto certo.
     """
     settings = load_settings()
-    historico = obter_historico(session_id, settings.memoria_limite_tokens)
     llm = _montar_llm(model, provider)
+    historico = obter_historico(session_id, settings.memoria_limite_tokens, llm)
     inicio = time.perf_counter()
 
     if not ignorar_guardrails:
         moderacao = checar_jailbreak(entrada)
         if not moderacao.seguro:
             resultado = _resposta_bloqueio(MENSAGEM_RECUSA_PADRAO)
-            historico.registrar_turno(HumanMessage(entrada), AIMessage(resultado.justificativa), llm)
+            registrar_turno(historico, entrada, resultado.justificativa)
             return RespostaChat(
                 resultado=resultado,
                 latencia_s=time.perf_counter() - inicio,
@@ -201,7 +201,7 @@ def conversar(
                 f"{escopo.motivo} Posso ajudar com orquestração de potência, faturamento "
                 "ou diagnóstico de carregadores GoodWe."
             )
-            historico.registrar_turno(HumanMessage(entrada), AIMessage(resultado.justificativa), llm)
+            registrar_turno(historico, entrada, resultado.justificativa)
             return RespostaChat(
                 resultado=resultado,
                 latencia_s=time.perf_counter() - inicio,
@@ -210,14 +210,14 @@ def conversar(
                 bloqueado_por_guardrail=True,
             )
 
-    tokens_contexto_previo = historico.total_tokens()  # contexto que será realmente enviado ao LLM
+    tokens_contexto_previo = total_tokens(historico)  # contexto que será realmente enviado ao LLM
 
     chain = construir_chain(llm)
     resultado: ConsultaRecarga = chain.invoke(
-        {"entrada": entrada, "historico": historico.mensagens_para_prompt()}
+        {"entrada": entrada, "historico": mensagens_para_prompt(historico)}
     )
 
-    historico.registrar_turno(HumanMessage(entrada), AIMessage(resultado.justificativa), llm)
+    registrar_turno(historico, entrada, resultado.justificativa)
 
     return RespostaChat(
         resultado=resultado,
