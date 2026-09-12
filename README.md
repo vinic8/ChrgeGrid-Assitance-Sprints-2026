@@ -77,7 +77,7 @@ SPRINT-03-IA/
 │   ├── compare_models.py         # Reexecuta o eval multi-provider (Bloco B, relatório §3.1)
 │   └── results/                  # Saída de cada execução (.json não versionado, .md versionado)
 ├── docs/
-│   └── RELATORIO_EVOLUCAO.txt    # Conteúdo-fonte do relatório (entregue em PDF na pasta docs/)
+│   └── RELATORIO_EVOLUCAO.pdf    # Conteúdo-fonte do relatório (entregue em PDF na pasta docs/)
 ├── requirements.txt
 └── .env.example
 ```
