@@ -162,7 +162,7 @@ Nenhuma chave deve aparecer no código nem ser commitada — `.env` está no `.g
 
 ## Nota de compatibilidade (Python 3.14)
 
-Esta máquina tem Python 3.14 instalado. É uma versão muito recente; se `pip install`
+Se a máquina tem Python 3.14 instalado. É uma versão muito recente; se `pip install`
 falhar ao compilar alguma dependência nativa (`pydantic-core`, `tiktoken`), crie o
 venv com uma versão mais testada (3.11–3.12) — `py -3.12 -m venv .venv`, se disponível
 — e repita a instalação.
