@@ -170,8 +170,7 @@ venv com uma versão mais testada (3.11–3.12) — `py -3.12 -m venv .venv`, se
 ## Memória conversacional
 
 O chatbot usa **`ConversationSummaryBufferMemory`**, a classe do próprio LangChain
-(`src/chain/memoria.py`, importada de `langchain_classic.memory` — requisito
-obrigatório do desafio). Ela guarda o histórico literal da sessão até
+(`src/chain/memoria.py`, importada de `langchain_classic.memory`. Ela guarda o histórico literal da sessão até
 `MEMORIA_LIMITE_TOKENS` (default 1500) e, ao estourar, envia a parte mais antiga da
 conversa para o próprio LLM (o mesmo provider/modelo em uso) gerar um **resumo em
 texto livre**, que substitui as mensagens resumidas — comportamento nativo da
