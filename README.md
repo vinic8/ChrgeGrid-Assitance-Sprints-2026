@@ -13,7 +13,7 @@ com interface gráfica em **Streamlit**.
 O relatório de evolução (resumo Sprints 1/2 → Sprint 03, decisões de refactory,
 tabela comparativa antes/depois, comparativo multi-provider e problemas/soluções)
 é entregue em PDF em `docs/` — o conteúdo-fonte está em
-[`docs/RELATORIO_EVOLUCAO.txt`](docs/RELATORIO_EVOLUCAO.txt).
+[`docs/RELATORIO_EVOLUCAO.txt`](docs/RELATORIO_EVOLUCAO.pdf).
 
 **Multi-provider**: o chatbot roda sobre dois providers, selecionáveis na própria
 interface — **Provider A: Ollama Cloud** (`gemma4:cloud`) e **Provider B: Groq**
