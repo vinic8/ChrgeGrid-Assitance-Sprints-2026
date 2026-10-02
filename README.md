@@ -235,7 +235,7 @@ em chunks **por seção** (nunca fundindo seções vizinhas — ver decisão no 
 Problema 4), embarcados com FastEmbed (`paraphrase-multilingual-MiniLM-L12-v2`,
 roda em CPU, sem API key) e indexados em FAISS (`data/faiss_index/`). A cada
 pergunta, a chain LCEL recupera os `k=6` chunks mais relevantes e os injeta no
-prompt como `<base_de_conhecimento>` (`system_prompt_v5.md`), com instrução
+prompt como `<base_de_conhecimento>` (`system_prompt_v6.md`), com instrução
 explícita para o modelo tratar esse conteúdo como fonte de verdade — sem essa
 instrução, testamos e o modelo **ignorava** a política recuperada (ver Problema 4
 do relatório). As fontes usadas em cada resposta aparecem na UI (📚) e em
