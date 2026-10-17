@@ -15,6 +15,10 @@ load_dotenv()
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 PROMPTS_DIR = ROOT_DIR / "prompts"
+DATA_DIR = ROOT_DIR / "data"
+KNOWLEDGE_BASE_DIR = DATA_DIR / "knowledge_base"
+CHROMA_DIR = DATA_DIR / "chroma_db"
+FASTEMBED_CACHE_DIR = DATA_DIR / ".fastembed_cache"
 
 
 @dataclass(frozen=True)
@@ -25,9 +29,19 @@ class Settings:
     groq_api_key: str
     model_groq: str
     temperature: float
+    top_p: float
     max_tokens: int
     memoria_limite_tokens: int
     system_prompt_version: str
+    # --- RAG (Sprint 04) ---
+    rag_prompt_version: str
+    rag_k: int
+    rag_estrategia_chunking: str
+    rag_limiar_relevancia: float
+    rag_busca: str
+    embeddings_backend: str
+    embeddings_model: str
+    ollama_embeddings_host: str
 
     @property
     def system_prompt_path(self) -> Path:
@@ -41,10 +55,19 @@ def load_settings() -> Settings:
         model_primary=os.getenv("MODEL_PRIMARY", "gemma4:cloud"),
         groq_api_key=os.getenv("GROQ_API_KEY", ""),
         model_groq=os.getenv("MODEL_GROQ", "qwen/qwen3.8-27b"),
-        temperature=float(os.getenv("TEMPERATURE", "0.2")),
-        max_tokens=int(os.getenv("MAX_TOKENS", "600")),
+        temperature=float(os.getenv("TEMPERATURE", "0")),
+        top_p=float(os.getenv("TOP_P", "0.9")),
+        max_tokens=int(os.getenv("MAX_TOKENS", "800")),
         memoria_limite_tokens=int(os.getenv("MEMORIA_LIMITE_TOKENS", "1500")),
-        system_prompt_version=os.getenv("SYSTEM_PROMPT_VERSION", "v6"),
+        system_prompt_version=os.getenv("SYSTEM_PROMPT_VERSION", "v7"),
+        rag_prompt_version=os.getenv("RAG_PROMPT_VERSION", "v4"),
+        rag_k=int(os.getenv("RAG_K", "6")),
+        rag_estrategia_chunking=os.getenv("RAG_CHUNKING", "por_secao_tabelas"),
+        rag_limiar_relevancia=float(os.getenv("RAG_LIMIAR_RELEVANCIA", "0")),
+        rag_busca=os.getenv("RAG_BUSCA", "hibrida_expandida"),
+        embeddings_backend=os.getenv("EMBEDDINGS_BACKEND", "fastembed"),
+        embeddings_model=os.getenv("EMBEDDINGS_MODEL", "nomic-embed-text"),
+        ollama_embeddings_host=os.getenv("OLLAMA_EMBEDDINGS_HOST", "http://localhost:11434"),
     )
 
 

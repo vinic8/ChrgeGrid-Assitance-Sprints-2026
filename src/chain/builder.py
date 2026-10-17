@@ -1,44 +1,48 @@
-"""Núcleo conversacional em LCEL: prompt | llm | parser.
+"""Núcleo conversacional em LCEL: prompt RAG | llm | parser (Sprint 04).
 
-Este é o coração do refactory da Sprint 03. Comparar com `src/manual_chat.py`,
-que reproduz a versão manual das Sprints 1/2 (f-strings + histórico concatenado à
-mão, sem schema, sem guardrail).
+Pipeline completo de uma pergunta (`conversar`):
 
-Multi-provider (Bloco B): a mesma chain roda sobre dois providers diferentes,
-selecionados por `provider`:
-- **Provider A** — Ollama Cloud, modelo `MODEL_PRIMARY` (default `gemma4:cloud`).
-- **Provider B** — Groq, modelo `MODEL_GROQ` (default `qwen/qwen3.8-27b`). O plano
-  era reintroduzir o Llama 3.3 (Sprints 1/2) via Groq, mas ele foi descontinuado
-  nesse provider; `qwen/qwen3.8-27b` é a alternativa open-weight que respondeu de
-  forma limpa nos testes (ver `docs/RELATORIO_EVOLUCAO.txt`, nota "Mudança de
-  provider").
+    guardrails (escopo, jailbreak)                        src/guardrails/
+      -> recuperação top-k no ChromaDB + sanitização        src/rag/retriever.py
+      -> prompt RAG versionado (persona v7 + regras RAG vN) src/rag/prompt_rag.py
+      -> LLM (Gemma via Ollama Cloud | Qwen via Groq)
+      -> PydanticOutputParser (ConsultaRecarga)            src/schemas/
+      -> citações resolvidas pelos metadados dos chunks    (documento, seção, página)
+
+Multi-provider: a mesma chain roda sobre dois providers, selecionados por `provider`:
+- **Provider A** — Ollama Cloud, modelo `MODEL_PRIMARY` (`gemma4:cloud`).
+- **Provider B** — Groq, modelo `MODEL_GROQ` (`qwen/qwen3.8-27b`).
+
+Parâmetros de geração (documentados em `docs/relatorio_modelos.md`):
+`temperature` (padrão 0), `top_p`, `max_tokens` e `k` (top-k da recuperação), todos
+vindos do .env e sobrescrevíveis por chamada (usado pelo eval e pela UI).
 """
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.output_parsers import PydanticOutputParser
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.runnables import RunnableLambda, RunnablePassthrough
+from langchain_core.runnables import RunnableLambda
 from langchain_groq import ChatGroq
 from langchain_ollama import ChatOllama
 
 from src.chain.memoria import mensagens_para_prompt, obter_historico, registrar_turno, total_tokens
-from src.config import extract_system_prompt_body, load_settings
+from src.config import load_settings
 from src.guardrails.moderation import MENSAGEM_RECUSA_PADRAO, checar_jailbreak
 from src.guardrails.scope_validator import checar_escopo
-from src.rag.indexer import formatar_contexto, obter_retriever
+from src.rag.prompt_rag import formatar_contexto, montar_prompt
+from src.rag.retriever import ChunkRecuperado, recuperar
 from src.schemas import ConsultaRecarga, Decisao
 from src.tokens import contar_tokens
 
 _parser = PydanticOutputParser(pydantic_object=ConsultaRecarga)
 
 PROVIDERS = {
-    "ollama": "Provider A — Ollama Cloud",
-    "groq": "Provider B — Groq",
+    "ollama": "Gemma 4 — Ollama Cloud",
+    "groq": "Qwen 3.8 — Groq",
 }
 
 
@@ -49,11 +53,25 @@ class RespostaChat:
     tokens_entrada: int
     tokens_saida: int
     bloqueado_por_guardrail: bool
-    fontes_rag: list[str] = None  # docs de knowledge/ usados nesta resposta (vazio se bloqueado por guardrail)
+    provider: str = "ollama"
+    modelo: str = ""
+    prompt_rag_version: str = ""
+    chunks: list[ChunkRecuperado] = field(default_factory=list)  # tudo o que foi recuperado
+    citacoes: list[ChunkRecuperado] = field(default_factory=list)  # o que o modelo citou (ids válidos)
 
-    def __post_init__(self):
-        if self.fontes_rag is None:
-            self.fontes_rag = []
+    @property
+    def fontes_rag(self) -> list[str]:
+        """Nomes dos documentos citados (compatível com a Sprint 03)."""
+        vistos: list[str] = []
+        for c in self.citacoes:
+            if c.documento not in vistos:
+                vistos.append(c.documento)
+        return vistos
+
+    @property
+    def contextos(self) -> list[str]:
+        """Textos recuperados enviados ao modelo (entrada do RAGAS)."""
+        return [c.texto for c in self.chunks]
 
 
 def modelo_padrao(provider: str, settings=None) -> str:
@@ -62,26 +80,39 @@ def modelo_padrao(provider: str, settings=None) -> str:
     return settings.model_groq if provider == "groq" else settings.model_primary
 
 
-_TIMEOUT_S = 90  # nenhum dos dois providers tinha timeout - uma chamada trava sem
-# resposta prende a UI/eval indefinidamente (achado real: compare_models.py ficou
-# >20min parado numa unica chamada Groq durante o desenvolvimento).
+_TIMEOUT_S = 90  # sem timeout, uma chamada travada no provider prendia a UI/eval
+# indefinidamente (achado real da Sprint 03, relatório Problema 6).
 
 
-def _montar_llm(model: str | None = None, provider: str = "ollama") -> BaseChatModel:
+def montar_llm(
+    model: str | None = None,
+    provider: str = "ollama",
+    temperature: float | None = None,
+    top_p: float | None = None,
+    max_tokens: int | None = None,
+) -> BaseChatModel:
     settings = load_settings()
+    temperature = settings.temperature if temperature is None else temperature
+    top_p = settings.top_p if top_p is None else top_p
+    max_tokens = max_tokens or settings.max_tokens
     if provider == "groq":
         return ChatGroq(
             model=model or settings.model_groq,
             api_key=settings.groq_api_key,
-            temperature=settings.temperature,
-            max_tokens=settings.max_tokens,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            model_kwargs={"top_p": top_p},
             request_timeout=_TIMEOUT_S,
+            # Groq (plano gratuito) limita a 8.000 tokens/min; o cliente espera e
+            # tenta de novo em HTTP 429 em vez de derrubar a conversa.
+            max_retries=6,
         )
     return ChatOllama(
         model=model or settings.model_primary,
         base_url=settings.ollama_host,
-        temperature=settings.temperature,
-        num_predict=settings.max_tokens,
+        temperature=temperature,
+        top_p=top_p,
+        num_predict=max_tokens,
         client_kwargs={
             "headers": {"Authorization": f"Bearer {settings.ollama_api_key}"},
             "timeout": _TIMEOUT_S,
@@ -93,39 +124,16 @@ def _resposta_bloqueio(justificativa: str) -> ConsultaRecarga:
     return ConsultaRecarga(decisao=Decisao.NAO_APLICAVEL, justificativa=justificativa)
 
 
-def construir_chain(llm: BaseChatModel):
-    """Monta a chain LCEL `retrieval | prompt | llm | parser` em torno de um LLM já
-    instanciado.
+def construir_chain(llm: BaseChatModel, prompt_rag_version: str | None = None):
+    """Chain LCEL `prompt RAG | llm | parser`.
 
-    `RunnablePassthrough.assign(contexto_tecnico=...)` é o passo de RAG: recupera
-    os chunks mais relevantes da base de conhecimento (`knowledge/*.md`, indexada
-    em FAISS por `src/rag/indexer.py`) para a pergunta atual e os injeta no prompt
-    como `<base_de_conhecimento>`, antes do LLM ver a pergunta. Sem isso, o modelo
-    "inventaria" códigos de erro Modbus/OCPP ou aplicaria uma tarifa fixa genérica
-    em vez da política de tarifação dinâmica real.
-
-    O último passo (`RunnableLambda(_parse_com_correcao)`) é o "parser": tenta
-    validar contra `ConsultaRecarga` e, se a primeira tentativa vier malformada
-    (comum quando o modelo não segue o JSON à risca), pede uma correção pontual
-    ao próprio LLM antes de desistir. Ver docs/RELATORIO_EVOLUCAO.txt, seção 4
-    (problema 2).
+    Entrada: {"entrada", "historico", "contexto"} — o `contexto` já vem recuperado e
+    formatado por `conversar` (assim a mesma lista de chunks alimenta o prompt, a UI
+    e o eval, sem recuperar duas vezes). O último passo tenta validar contra
+    `ConsultaRecarga` e, se a saída vier malformada, pede uma correção pontual ao
+    próprio LLM antes de desistir (Sprint 03, relatório Problema 1).
     """
-    settings = load_settings()
-    system_prompt = extract_system_prompt_body(settings.system_prompt_path)
-    retriever = obter_retriever(k=6)
-
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            ("system", system_prompt + "\n\n{format_instructions}"),
-            ("system", "<base_de_conhecimento>\n{contexto_tecnico}\n</base_de_conhecimento>"),
-            MessagesPlaceholder("historico"),
-            ("human", "{entrada}"),
-        ]
-    ).partial(format_instructions=_parser.get_format_instructions())
-
-    def _recuperar(inputs: dict) -> str:
-        documentos = retriever.invoke(inputs["entrada"])
-        return formatar_contexto(documentos)
+    prompt = montar_prompt(prompt_rag_version, _parser.get_format_instructions())
 
     def _parse_com_correcao(ai_message: AIMessage) -> ConsultaRecarga:
         texto = ai_message.content
@@ -142,25 +150,34 @@ def construir_chain(llm: BaseChatModel):
             correcao = llm.invoke(prompt_correcao)
             return _parser.parse(correcao.content)
 
-    etapa_rag = RunnablePassthrough.assign(contexto_tecnico=RunnableLambda(_recuperar))
-    return etapa_rag | prompt | llm | RunnableLambda(_parse_com_correcao)
+    # Retry com backoff exponencial: a Ollama Cloud responde HTTP 429 ("too many
+    # concurrent requests") quando há chamadas simultâneas acima do limite do plano
+    # (ex.: modo multi-provider) e a Groq responde 429 ao estourar tokens/minuto.
+    llm_com_retry = llm.with_retry(stop_after_attempt=5, wait_exponential_jitter=True)
+    return prompt | llm_com_retry | RunnableLambda(_parse_com_correcao)
 
 
-def recuperar_fontes(entrada: str, k: int = 6) -> list[str]:
-    """Nomes dos documentos de `knowledge/` usados para responder `entrada`.
+def _consulta_de_busca(entrada: str, historico) -> str:
+    """Pergunta usada na busca vetorial.
 
-    Chamado separadamente de `construir_chain` (que já recupera o mesmo contexto
-    internamente) só para expor a proveniência ao chamador (UI/eval) sem precisar
-    remodelar o retorno da chain — o custo de recuperar 2x é irrelevante (busca
-    vetorial local em milissegundos).
+    Perguntas de follow-up curtas ("e para frota?", "e se for às 19h?") não têm
+    vocabulário suficiente para recuperar o trecho certo sozinhas; nesses casos a
+    busca usa também a última pergunta do operador.
     """
-    documentos = obter_retriever(k).invoke(entrada)
-    vistos: list[str] = []
-    for doc in documentos:
-        fonte = doc.metadata.get("fonte", "?")
-        if fonte not in vistos:
-            vistos.append(fonte)
-    return vistos
+    if len(entrada.split()) >= 8 or historico is None:
+        return entrada
+    anteriores = [m.content for m in historico.chat_memory.messages if isinstance(m, HumanMessage)]
+    return f"{anteriores[-1]} {entrada}" if anteriores else entrada
+
+
+def _resolver_citacoes(resultado: ConsultaRecarga, chunks: list[ChunkRecuperado]) -> list[ChunkRecuperado]:
+    por_id = {c.n: c for c in chunks}
+    citados, vistos = [], set()
+    for n in resultado.fontes_citadas:
+        if n in por_id and n not in vistos:
+            citados.append(por_id[n])
+            vistos.add(n)
+    return citados
 
 
 def conversar(
@@ -169,54 +186,62 @@ def conversar(
     model: str | None = None,
     provider: str = "ollama",
     ignorar_guardrails: bool = False,
+    prompt_rag_version: str | None = None,
+    k: int | None = None,
+    estrategia: str | None = None,
+    busca: str | None = None,
+    limiar: float | None = None,
+    chunks: list[ChunkRecuperado] | None = None,
 ) -> RespostaChat:
-    """Ponto de entrada usado pela UI Streamlit e pelo eval harness.
+    """Ponto de entrada usado pela UI, pelo eval RAGAS e pelo modo multi-provider.
 
-    Faz a checagem de guardrails (barata, sem chamar o LLM) e só então invoca
-    a chain LCEL. Em qualquer um dos dois caminhos, atualiza a memória da sessão
-    (`registrar_turno`, que também aciona o resumo automático quando o histórico
-    estoura `MEMORIA_LIMITE_TOKENS`) para que o próximo turno tenha o contexto certo.
+    `chunks` permite injetar uma recuperação já feita (o modo multi-provider recupera
+    uma vez para todas as combinações; o teste de prompt injection injeta um
+    documento adulterado).
     """
     settings = load_settings()
-    llm = _montar_llm(model, provider)
+    prompt_rag_version = prompt_rag_version or settings.rag_prompt_version
+    modelo = model or modelo_padrao(provider, settings)
+    llm = montar_llm(modelo, provider)
     historico = obter_historico(session_id, settings.memoria_limite_tokens, llm)
     inicio = time.perf_counter()
 
-    if not ignorar_guardrails:
-        moderacao = checar_jailbreak(entrada)
-        if not moderacao.seguro:
-            resultado = _resposta_bloqueio(MENSAGEM_RECUSA_PADRAO)
-            registrar_turno(historico, entrada, resultado.justificativa)
-            return RespostaChat(
-                resultado=resultado,
-                latencia_s=time.perf_counter() - inicio,
-                tokens_entrada=contar_tokens(entrada),
-                tokens_saida=contar_tokens(resultado.justificativa),
-                bloqueado_por_guardrail=True,
-            )
+    def _bloqueio(justificativa: str) -> RespostaChat:
+        resultado = _resposta_bloqueio(justificativa)
+        registrar_turno(historico, entrada, resultado.justificativa)
+        return RespostaChat(
+            resultado=resultado,
+            latencia_s=time.perf_counter() - inicio,
+            tokens_entrada=contar_tokens(entrada),
+            tokens_saida=contar_tokens(resultado.justificativa),
+            bloqueado_por_guardrail=True,
+            provider=provider,
+            modelo=modelo,
+            prompt_rag_version=prompt_rag_version,
+        )
 
+    if not ignorar_guardrails:
+        if not checar_jailbreak(entrada).seguro:
+            return _bloqueio(MENSAGEM_RECUSA_PADRAO)
         escopo = checar_escopo(entrada)
         if not escopo.dentro_do_escopo:
-            resultado = _resposta_bloqueio(
+            return _bloqueio(
                 f"{escopo.motivo} Posso ajudar com orquestração de potência, faturamento "
                 "ou diagnóstico de carregadores GoodWe."
             )
-            registrar_turno(historico, entrada, resultado.justificativa)
-            return RespostaChat(
-                resultado=resultado,
-                latencia_s=time.perf_counter() - inicio,
-                tokens_entrada=contar_tokens(entrada),
-                tokens_saida=contar_tokens(resultado.justificativa),
-                bloqueado_por_guardrail=True,
-            )
 
-    tokens_contexto_previo = total_tokens(historico)  # contexto que será realmente enviado ao LLM
+    if chunks is None:
+        chunks = recuperar(
+            _consulta_de_busca(entrada, historico), k=k, estrategia=estrategia, limiar=limiar, busca=busca
+        )
+    contexto = formatar_contexto(chunks, prompt_rag_version)
+    mensagens_historico = mensagens_para_prompt(historico)
+    tokens_contexto_previo = total_tokens(historico) + contar_tokens(contexto)
 
-    chain = construir_chain(llm)
+    chain = construir_chain(llm, prompt_rag_version)
     resultado: ConsultaRecarga = chain.invoke(
-        {"entrada": entrada, "historico": mensagens_para_prompt(historico)}
+        {"entrada": entrada, "historico": mensagens_historico, "contexto": contexto}
     )
-
     registrar_turno(historico, entrada, resultado.justificativa)
 
     return RespostaChat(
@@ -225,5 +250,9 @@ def conversar(
         tokens_entrada=contar_tokens(entrada) + tokens_contexto_previo,
         tokens_saida=contar_tokens(resultado.justificativa),
         bloqueado_por_guardrail=False,
-        fontes_rag=recuperar_fontes(entrada),
+        provider=provider,
+        modelo=modelo,
+        prompt_rag_version=prompt_rag_version,
+        chunks=chunks,
+        citacoes=_resolver_citacoes(resultado, chunks),
     )

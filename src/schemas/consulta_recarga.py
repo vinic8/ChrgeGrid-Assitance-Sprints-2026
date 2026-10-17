@@ -72,8 +72,19 @@ class ConsultaRecarga(BaseModel):
     )
     justificativa: str = Field(
         min_length=1,
-        max_length=1500,
+        max_length=2000,
         description="Explicação técnica curta e direta da decisão, no tom do ChargeGrid Assistant.",
+    )
+    fontes_citadas: list[int] = Field(
+        default_factory=list,
+        description=(
+            "Ids (atributo id de <documento>) dos documentos recuperados usados na resposta. "
+            "Lista vazia se nenhum documento foi usado."
+        ),
+    )
+    fora_da_base: bool = Field(
+        default=False,
+        description="true quando a informação pedida não consta nos documentos recuperados.",
     )
 
     @field_validator("justificativa")

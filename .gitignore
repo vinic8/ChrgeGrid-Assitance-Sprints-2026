@@ -3,7 +3,12 @@
 __pycache__/
 *.pyc
 evals/results/*.json
+!evals/results/ragas_*.json
+!evals/results/respostas_sprint03.json
 evals/results/*.csv
 .streamlit/secrets.toml
+# Vector store e cache de modelos: gerados localmente (python -m src.rag.vector_store)
+data/chroma_db/
 data/faiss_index/
+data/.fastembed_cache/
 *.log

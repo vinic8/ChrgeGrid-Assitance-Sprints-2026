@@ -15,13 +15,14 @@ PALAVRAS_DOMINIO = {
     "rede", "disjuntor", "modbus", "rs485", "faturamento", "tarifa", "fatura",
     "load balancing", "balanceamento", "eletroposto", "veiculo", "veículo",
     "sessao", "sessão", "ciclo", "goodwe", "chargegrid", "operador",
+    "ocpp", "condomínio", "condominio", "vaga", "plugue", "tomada",
 }
 
 # Tópicos claramente fora de escopo que às vezes aparecem em pedidos de teste
 # de guardrail — usados só para reforçar a recusa com um motivo mais específico.
 # NOTA: "política" (bare) foi removido daqui de propósito - colidia com termos
 # legítimos do próprio domínio ("política de tarifação", "política de preços",
-# "política de descontos" - ver knowledge/politica_tarifaria.md), bloqueando por
+# "política de descontos" - ver data/knowledge_base/fontes/tabelas_tarifarias.md), bloqueando por
 # engano perguntas de faturamento (achado real do eval, caso R3). "eleição" já
 # cobre o caso mais comum de conteúdo político genérico sem essa ambiguidade.
 TOPICOS_BLOQUEADOS = {

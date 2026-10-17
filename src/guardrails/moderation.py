@@ -5,7 +5,7 @@ Não substitui o bloco <seguranca> do system prompt ativo — é uma segunda cam
 ("defesa em profundidade"): mesmo que o modelo eventualmente ceda a uma injeção
 bem elaborada, esta checagem barra os padrões mais comuns antes da chamada ao LLM.
 Na prática, o próprio prompt (a partir da v3) já resiste bem sozinho — ver os
-testes documentados em `docs/RELATORIO_EVOLUCAO.txt` — mas este regex continua
+testes documentados no relatório da Sprint 03 — mas este regex continua
 valendo como primeira camada, mais barata (zero chamada ao LLM) para os padrões
 mais óbvios e previsíveis de jailbreak.
 """
