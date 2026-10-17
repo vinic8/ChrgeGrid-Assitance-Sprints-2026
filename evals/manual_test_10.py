@@ -127,7 +127,7 @@ def _formatar_markdown(resultado: dict) -> str:
                 if r["tarifa_reais_kwh"] is not None:
                     detalhes.append(f"tarifa aplicada: R${r['tarifa_reais_kwh']}/kWh")
                 if r["bloqueado_por_guardrail"]:
-                    detalhes.append("🚫 bloqueado por guardrail")
+                    detalhes.append("bloqueado por guardrail")
                 if r["fontes_rag"]:
                     detalhes.append("fontes RAG: " + ", ".join(r["fontes_rag"]))
                 linhas.append(f"  - _{' · '.join(detalhes)}_")

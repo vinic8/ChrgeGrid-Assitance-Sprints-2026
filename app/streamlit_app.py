@@ -33,7 +33,9 @@ from src.chain.multi_provider import VERSOES_PADRAO, consultar_multi  # noqa: E4
 from src.config import load_settings  # noqa: E402
 from src.rag.prompt_rag import VERSOES  # noqa: E402
 
-st.set_page_config(page_title="ChargeGrid Assistant", page_icon="⚡", layout="wide")
+st.set_page_config(
+    page_title="ChargeGrid Assistant", page_icon=str(ROOT_DIR / "assets" / "goodwe_logo.png"), layout="wide"
+)
 
 settings = load_settings()
 
@@ -60,16 +62,16 @@ def _chunks_payload(resposta) -> list[dict]:
 def mostrar_fontes(fontes: list[dict], fora_da_base: bool, bloqueado: bool) -> None:
     """Citação visível: sempre presente abaixo da resposta."""
     if bloqueado:
-        st.caption("🚫 Bloqueado pelo guardrail antes de consultar a base.")
+        st.caption("Bloqueado pelo guardrail antes de consultar a base.")
         return
     if fora_da_base:
-        st.warning("Informação não encontrada na base de conhecimento — nenhuma fonte citada.", icon="⚠️")
+        st.warning("Informação não encontrada na base de conhecimento. Nenhuma fonte citada.")
         return
     if not fontes:
-        st.caption("📚 Nenhuma fonte citada pelo modelo nesta resposta.")
+        st.caption("Nenhuma fonte citada pelo modelo nesta resposta.")
         return
     linhas = "\n".join(f"- **[{f['n']}] {f['titulo']}** — {f['secao']} · p. {f['pagina']}" for f in fontes)
-    st.info(f"**📚 Fontes**\n\n{linhas}")
+    st.info(f"**Fontes**\n\n{linhas}")
 
 
 def mostrar_trechos(chunks: list[dict]) -> None:
@@ -77,7 +79,7 @@ def mostrar_trechos(chunks: list[dict]) -> None:
         if not chunks:
             st.caption("Nenhum trecho recuperado (pergunta barrada antes da busca ou abaixo do limiar configurado).")
         for c in chunks:
-            alerta = " · ⚠️ instrução embutida removida" if c["suspeito"] else ""
+            alerta = " · instrução embutida removida pela sanitização" if c["suspeito"] else ""
             st.markdown(f"**[{c['n']}] {c['citacao']}** · score {c['score']:.3f}{alerta}")
             st.text(c["texto"][:1200])
 
@@ -85,7 +87,7 @@ def mostrar_trechos(chunks: list[dict]) -> None:
 # --------------------------------------------------------------------------- sidebar
 with st.sidebar:
     st.image(str(ROOT_DIR / "assets" / "goodwe_logo.png"), width="stretch")
-    st.title("⚡ ChargeGrid Assistant")
+    st.title("ChargeGrid Assistant")
     st.caption("GoodWe · Sprint 04 — RAG com ChromaDB")
 
     provider = st.radio("Modelo", options=list(PROVIDERS), format_func=lambda p: PROVIDERS[p])
@@ -133,7 +135,7 @@ with st.sidebar:
     if provider == "groq" and not settings.groq_api_key:
         st.error("GROQ_API_KEY não configurada no .env.")
 
-aba_chat, aba_multi = st.tabs(["💬 Chat", "🔀 Multi-provider (2 modelos × 2 prompts)"])
+aba_chat, aba_multi = st.tabs(["Chat", "Multi-provider (2 modelos x 2 prompts)"])
 
 # --------------------------------------------------------------------------- chat
 with aba_chat:
