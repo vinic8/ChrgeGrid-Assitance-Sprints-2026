@@ -269,7 +269,10 @@ python -m src.rag.vector_store
 Este passo lê os PDFs de `data/knowledge_base/`, divide o texto em trechos, gera os
 embeddings e grava tudo em `data/chroma_db/`. Na primeira execução ele baixa o modelo de
 embeddings (cerca de 520 MB). O passo é opcional: se for pulado, a indexação acontece na
-primeira pergunta feita na interface, que então demora mais.
+primeira pergunta feita na interface, que então demora mais e avisa que está preparando
+a base. As avaliações das iterações 1 e 2 usam outras coleções, que são criadas
+automaticamente quando necessário; para criá-las de uma vez, use
+`python -m src.rag.vector_store --todas`.
 
 ### Passo 6. Abrir a interface
 
@@ -295,13 +298,14 @@ python -m scripts.gerar_pdfs_base
 
 - Modelo: Gemma 4 (Ollama Cloud) ou Qwen 3.8 (Groq).
 - Prompt RAG: versão do prompt, de v1 a v4. A v4 é a padrão.
-- Avançado: quantidade de trechos recuperados (k), tipo de busca, opção de desligar os
+- Avançado: quantidade de trechos recuperados (k), tipo de busca (vale para as duas abas), opção de desligar os
   guardrails para depuração, parâmetros de geração em uso e ocupação da memória da
   conversa.
 
 **Aba Chat**
 
-Conversa com memória. Abaixo de cada resposta aparecem:
+Conversa com memória. Com o chat vazio, a tela mostra quatro perguntas de exemplo que
+podem ser enviadas com um clique. Abaixo de cada resposta aparecem:
 
 - as fontes usadas, no formato `[número] Documento - Seção - página`. Quando a informação
   não existe na base, aparece um aviso no lugar das fontes. Quando a pergunta é barrada

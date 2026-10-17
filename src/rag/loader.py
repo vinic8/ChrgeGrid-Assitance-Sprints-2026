@@ -33,6 +33,10 @@ from langchain_core.documents import Document
 
 from src.config import KNOWLEDGE_BASE_DIR
 
+# Sem isso, find_tables() imprime uma recomendação do pacote opcional pymupdf_layout,
+# que o projeto não usa e que parece erro para quem está rodando.
+pymupdf.no_recommend_layout()
+
 _HIFEN_QUEBRA = re.compile(r"(\w)-\n(\w)")
 
 

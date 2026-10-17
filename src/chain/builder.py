@@ -120,6 +120,61 @@ def montar_llm(
     )
 
 
+class ErroTemporarioProvider(RuntimeError):
+    """Erro do provider que pode passar numa nova tentativa (limite de uso, servidor, rede)."""
+
+
+def _status_http(exc: BaseException) -> int | None:
+    for alvo in (exc, getattr(exc, "response", None)):
+        status = getattr(alvo, "status_code", None)
+        if isinstance(status, int):
+            return status
+    return None
+
+
+def classificar_erro(exc: BaseException) -> str:
+    """Tipo do erro de um provider: "autenticacao", "limite", "conexao" ou "outro".
+
+    Usado pelo retry (só vale tentar de novo em "limite" e "conexao") e pela interface,
+    para mostrar uma mensagem clara em vez do erro técnico.
+    """
+    if isinstance(exc, ErroTemporarioProvider) and exc.__cause__ is not None:
+        exc = exc.__cause__
+    status = _status_http(exc)
+    if status in (401, 403):
+        return "autenticacao"
+    if status == 429:
+        return "limite"
+    if status is not None and status >= 500:
+        return "conexao"
+    nome = type(exc).__name__.lower()
+    if isinstance(exc, (TimeoutError, ConnectionError)) or any(p in nome for p in ("timeout", "connect")):
+        return "conexao"
+    return "outro"
+
+
+def _llm_com_retry(llm: BaseChatModel):
+    """LLM com retry e backoff exponencial só para erros temporários.
+
+    A Ollama Cloud responde HTTP 429 ("too many concurrent requests") com chamadas
+    simultâneas acima do limite do plano (ex.: modo multi-provider) e a Groq responde 429
+    ao estourar tokens/minuto. Erros definitivos, como chave inválida (401), não são
+    repetidos: antes eram tentados 5 vezes e o aviso levava ~19 s para aparecer.
+    """
+
+    def _chamar(mensagens):
+        try:
+            return llm.invoke(mensagens)
+        except Exception as exc:  # noqa: BLE001 - classificamos e relançamos
+            if classificar_erro(exc) in ("limite", "conexao"):
+                raise ErroTemporarioProvider(str(exc)) from exc
+            raise
+
+    return RunnableLambda(_chamar).with_retry(
+        retry_if_exception_type=(ErroTemporarioProvider,), stop_after_attempt=5, wait_exponential_jitter=True
+    )
+
+
 def _resposta_bloqueio(justificativa: str) -> ConsultaRecarga:
     return ConsultaRecarga(decisao=Decisao.NAO_APLICAVEL, justificativa=justificativa)
 
@@ -150,11 +205,7 @@ def construir_chain(llm: BaseChatModel, prompt_rag_version: str | None = None):
             correcao = llm.invoke(prompt_correcao)
             return _parser.parse(correcao.content)
 
-    # Retry com backoff exponencial: a Ollama Cloud responde HTTP 429 ("too many
-    # concurrent requests") quando há chamadas simultâneas acima do limite do plano
-    # (ex.: modo multi-provider) e a Groq responde 429 ao estourar tokens/minuto.
-    llm_com_retry = llm.with_retry(stop_after_attempt=5, wait_exponential_jitter=True)
-    return prompt | llm_com_retry | RunnableLambda(_parse_com_correcao)
+    return prompt | _llm_com_retry(llm) | RunnableLambda(_parse_com_correcao)
 
 
 def _consulta_de_busca(entrada: str, historico) -> str:

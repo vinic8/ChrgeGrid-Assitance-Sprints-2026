@@ -19,7 +19,7 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
-from src.chain.builder import PROVIDERS, RespostaChat, conversar, modelo_padrao
+from src.chain.builder import PROVIDERS, RespostaChat, classificar_erro, conversar, modelo_padrao
 from src.chain.memoria import limpar_sessao
 from src.guardrails import checar_escopo, checar_jailbreak
 from src.rag.retriever import ChunkRecuperado, recuperar
@@ -34,6 +34,7 @@ class ResultadoMulti:
     prompt_rag_version: str
     resposta: RespostaChat | None = None
     erro: str | None = None
+    tipo_erro: str | None = None  # ver classificar_erro()
 
     @property
     def rotulo(self) -> str:
@@ -47,6 +48,7 @@ def _rodar(pergunta: str, provider: str, versao: str, chunks: list[ChunkRecupera
         resultado.resposta = conversar(sessao, pergunta, provider=provider, prompt_rag_version=versao, chunks=chunks)
     except Exception as exc:  # noqa: BLE001 - uma combinação com erro não derruba as outras
         resultado.erro = str(exc)
+        resultado.tipo_erro = classificar_erro(exc)
     finally:
         limpar_sessao(sessao)
     return resultado
@@ -57,9 +59,10 @@ def consultar_multi(
     providers: tuple[str, ...] = tuple(PROVIDERS),
     versoes_prompt: tuple[str, ...] = VERSOES_PADRAO,
     k: int | None = None,
+    busca: str | None = None,
 ) -> tuple[list[ChunkRecuperado], list[ResultadoMulti]]:
     bloqueada = not checar_jailbreak(pergunta).seguro or not checar_escopo(pergunta).dentro_do_escopo
-    chunks = [] if bloqueada else recuperar(pergunta, k=k)
+    chunks = [] if bloqueada else recuperar(pergunta, k=k, busca=busca)
     combinacoes = [(p, v) for p in providers for v in versoes_prompt]
     with ThreadPoolExecutor(max_workers=len(combinacoes)) as executor:
         futuros = [executor.submit(_rodar, pergunta, p, v, chunks) for p, v in combinacoes]

@@ -27,11 +27,12 @@ if str(ROOT_DIR) not in sys.path:
 
 import streamlit as st  # noqa: E402
 
-from src.chain.builder import PROVIDERS, conversar, modelo_padrao  # noqa: E402
+from src.chain.builder import PROVIDERS, classificar_erro, conversar, modelo_padrao  # noqa: E402
 from src.chain.memoria import limpar_sessao, obter_sessao_existente, total_tokens  # noqa: E402
 from src.chain.multi_provider import VERSOES_PADRAO, consultar_multi  # noqa: E402
 from src.config import load_settings  # noqa: E402
 from src.rag.prompt_rag import VERSOES  # noqa: E402
+from src.rag.vector_store import colecao_pronta  # noqa: E402
 
 st.set_page_config(
     page_title="ChargeGrid Assistant", page_icon=str(ROOT_DIR / "assets" / "goodwe_logo.png"), layout="wide"
@@ -43,6 +44,26 @@ if "session_id" not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
 if "mensagens" not in st.session_state:
     st.session_state.mensagens = []
+
+DECISOES = {"autorizado": "autorizado", "negado": "negado", "nao_aplicavel": "não aplicável"}
+CHAVES = {"ollama": "OLLAMA_API_KEY", "groq": "GROQ_API_KEY"}
+EXEMPLOS = [
+    "O carregador C11 fez uma recarga das 18:30 às 19:00, com consumo de 5 kWh. Quanto fica o faturamento?",
+    "No condomínio, em quanto tempo preciso tirar o carro da vaga depois da recarga?",
+    "O que significa o código de exceção Modbus 0x0002?",
+    "Qual a potência do modelo GW30K-HCA-20?",
+]
+
+
+def mensagem_de_erro(tipo: str, provider: str, detalhe: str) -> str:
+    nome = PROVIDERS[provider]
+    if tipo == "autenticacao":
+        return f"Chave de API inválida ou sem permissão para {nome}. Confira {CHAVES[provider]} no arquivo .env."
+    if tipo == "limite":
+        return f"Limite de uso de {nome} atingido. Aguarde alguns minutos ou troque de modelo na barra lateral."
+    if tipo == "conexao":
+        return f"Não foi possível conectar a {nome}. Verifique a conexão com a internet e tente de novo."
+    return f"Falha ao consultar {nome}: {detalhe}"
 
 
 def _fontes_payload(resposta) -> list[dict]:
@@ -115,7 +136,7 @@ with st.sidebar:
             "Busca",
             modos_busca,
             index=modos_busca.index(settings.rag_busca) if settings.rag_busca in modos_busca else 0,
-            help="hibrida_expandida: vetorial + BM25 com expansão de consulta (padrão, iteração 5).",
+            help="hibrida_expandida: vetorial + BM25 com expansão de consulta (padrão).",
         )
         ignorar_guardrails = st.toggle("Desativar guardrails (debug)", value=False)
         st.caption(
@@ -150,27 +171,43 @@ with aba_chat:
                     st.json(msg["estruturado"])
 
     entrada = st.chat_input("Pergunte sobre tarifas, regimento, Modbus/OCPP, carregador GoodWe...")
+    if not st.session_state.mensagens and not entrada:
+        area_exemplos = st.empty()
+        with area_exemplos.container():
+            st.caption("Perguntas de exemplo")
+            colunas_exemplo = st.columns(2)
+            for i, exemplo in enumerate(EXEMPLOS):
+                if colunas_exemplo[i % 2].button(exemplo, key=f"exemplo_{i}", width="stretch"):
+                    entrada = exemplo
+        if entrada:
+            area_exemplos.empty()
     if entrada:
         st.session_state.mensagens.append({"role": "user", "content": entrada})
         with st.chat_message("user"):
             st.markdown(entrada)
 
         with st.chat_message("assistant"):
-            with st.spinner("Consultando a base de conhecimento..."):
+            aviso = (
+                "Consultando a base de conhecimento..."
+                if colecao_pronta()
+                else "Primeira execução: preparando a base de conhecimento. Isso leva alguns minutos e só acontece uma vez."
+            )
+            with st.spinner(aviso):
                 try:
                     resposta = conversar(
                         st.session_state.session_id, entrada, model=modelo, provider=provider,
                         ignorar_guardrails=ignorar_guardrails, prompt_rag_version=prompt_rag, k=k, busca=busca,
                     )
                 except Exception as exc:  # noqa: BLE001 - erro de provider não pode derrubar a UI
-                    st.error(f"Falha ao consultar {PROVIDERS[provider]}: {exc}")
+                    st.session_state.mensagens.pop()
+                    st.error(mensagem_de_erro(classificar_erro(exc), provider, str(exc)))
                     st.stop()
             texto = resposta.resultado.justificativa
             fontes = _fontes_payload(resposta)
             chunks = _chunks_payload(resposta)
             meta = (
                 f"{PROVIDERS[provider]} · prompt RAG {prompt_rag} · k={k} · busca {busca} · "
-                f"decisão: {resposta.resultado.decisao.value} · {resposta.latencia_s:.2f}s"
+                f"decisão: {DECISOES[resposta.resultado.decisao.value]} · {resposta.latencia_s:.2f}s"
             )
             estruturado = resposta.resultado.model_dump(mode="json")
 
@@ -199,20 +236,20 @@ with aba_multi:
         enviar = st.form_submit_button("Consultar as 4 combinações")
     if enviar and pergunta_multi.strip():
         with st.spinner("Consultando os dois modelos com os dois prompts..."):
-            chunks_multi, resultados = consultar_multi(pergunta_multi.strip(), k=k)
+            chunks_multi, resultados = consultar_multi(pergunta_multi.strip(), k=k, busca=busca)
         colunas = st.columns(len(VERSOES_PADRAO))
         for indice, r in enumerate(resultados):
             with colunas[indice % len(colunas)]:
                 st.subheader(r.rotulo)
                 st.caption(f"`{r.modelo}`")
                 if r.erro:
-                    st.error(r.erro)
+                    st.error(mensagem_de_erro(r.tipo_erro, r.provider, r.erro))
                     continue
                 st.markdown(r.resposta.resultado.justificativa)
                 mostrar_fontes(
                     _fontes_payload(r.resposta), r.resposta.resultado.fora_da_base, r.resposta.bloqueado_por_guardrail
                 )
-                st.caption(f"{r.resposta.latencia_s:.2f}s · decisão: {r.resposta.resultado.decisao.value}")
+                st.caption(f"{r.resposta.latencia_s:.2f}s · decisão: {DECISOES[r.resposta.resultado.decisao.value]}")
                 st.divider()
         if chunks_multi:
             mostrar_trechos([

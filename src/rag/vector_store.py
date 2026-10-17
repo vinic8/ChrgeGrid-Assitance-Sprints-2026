@@ -15,11 +15,13 @@ digital" (hash dos PDFs + parâmetros de chunking). Se um PDF da base mudar, a
 próxima chamada a `obter_vector_store` detecta a diferença e reconstrói a
 coleção sozinha — sem passo manual esquecido.
 
-Uso direto (indexa a configuração ativa no .env):
-    python -m src.rag.vector_store
+Uso direto:
+    python -m src.rag.vector_store            # indexa só a coleção usada pela interface (.env)
+    python -m src.rag.vector_store --todas    # indexa também as coleções das iterações 1 e 2
 """
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 
@@ -93,8 +95,33 @@ def obter_vector_store(estrategia: str | None = None, backend: str | None = None
     return store
 
 
+def colecao_pronta(estrategia: str | None = None, backend: str | None = None) -> bool:
+    """True se a coleção já está indexada e atualizada.
+
+    Não carrega o modelo de embeddings: a interface usa isso só para avisar o usuário de
+    que a primeira pergunta vai demorar (download do modelo e indexação).
+    """
+    import chromadb
+
+    settings = load_settings()
+    estrategia = estrategia or settings.rag_estrategia_chunking
+    backend = backend or settings.embeddings_backend
+    if not CHROMA_DIR.exists():
+        return False
+    try:
+        colecao = chromadb.PersistentClient(path=str(CHROMA_DIR)).get_collection(nome_colecao(estrategia, backend))
+    except Exception:  # noqa: BLE001 - coleção inexistente
+        return False
+    atual = (colecao.metadata or {}).get("impressao_digital")
+    return colecao.count() > 0 and atual == _impressao_digital(estrategia)
+
+
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Indexa a base de conhecimento no ChromaDB.")
+    parser.add_argument("--todas", action="store_true", help="indexa as coleções de todas as estratégias de chunking")
+    args = parser.parse_args()
     s = load_settings()
-    for estrategia in ESTRATEGIAS:
+    estrategias = list(ESTRATEGIAS) if args.todas else [s.rag_estrategia_chunking]
+    for estrategia in estrategias:
         store = indexar(estrategia, s.embeddings_backend)
         print(f"{nome_colecao(estrategia, s.embeddings_backend)}: {store._collection.count()} chunks em {CHROMA_DIR}")
