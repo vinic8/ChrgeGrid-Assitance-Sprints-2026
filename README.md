@@ -86,57 +86,111 @@ SPRINT-03-IA/
 │   ├── RELATORIO_EVOLUCAO_SPRINT04.pdf   # Relatório de evolução da Sprint 04 (até 5 páginas)
 │   └── RELATORIO_EVOLUCAO_SPRINT03.pdf   # Relatório de evolução da Sprint 03 (histórico)
 ├── INTEGRANTES.txt               # Nome, RM e turma dos integrantes
-├── requirements.txt
+├── requirements.txt            # Interface e pipeline RAG
+├── requirements-eval.txt       # Avaliação (RAGAS)
 └── .env.example
 ```
 
 ## Como rodar
 
+Passo a passo para Windows, Linux e macOS. Os comandos de Python são os mesmos nos três;
+mudam só a forma de chamar o Python, de ativar o ambiente virtual e de copiar o `.env`.
+
 ### 1. Pré-requisitos
 
-- Python 3.11+ (testado em 3.14).
-- API key da **Ollama Cloud** (Gemma 4): https://ollama.com/settings/keys
-- API key da **Groq** (Qwen 3.8): https://console.groq.com/keys
+- **Python 3.12 ou mais novo** (testado no 3.14). Confira com `python --version`
+  (Windows) ou `python3 --version` (Linux e macOS).
+- Chave de API da **Ollama Cloud** (Gemma 4): https://ollama.com/settings/keys
+- Chave de API da **Groq** (Qwen 3.8): https://console.groq.com/keys
+- Cerca de 2 GB livres em disco (dependências + modelo de embeddings).
 
-### 2. Instalação
+Se não tiver o Python 3.12+:
 
-```bash
+| Sistema | Como instalar |
+|---|---|
+| Windows | Instalador de https://www.python.org/downloads/. Marque **"Add python.exe to PATH"** na primeira tela. |
+| macOS | Instalador de https://www.python.org/downloads/ ou `brew install python@3.12`. O Python que vem no macOS (3.9) é antigo demais. |
+| Linux (Ubuntu/Debian) | `sudo apt update && sudo apt install python3 python3-venv python3-pip`. O Ubuntu 24.04 já traz o 3.12; em versões mais antigas, instale um Python mais novo (ex.: via `pyenv`). |
+
+### 2. Baixar o projeto
+
+Escolha uma das opções:
+
+- **ZIP**: no GitHub, botão **Code → Download ZIP**, e descompacte. A pasta se chama
+  `ChrgeGrid-Assitance-Sprints-2026-main`.
+- **Git**: `git clone https://github.com/vinic8/ChrgeGrid-Assitance-Sprints-2026.git`
+  (a pasta se chama `ChrgeGrid-Assitance-Sprints-2026`).
+
+Abra um terminal **dentro da pasta do projeto** (a que tem o `README.md`). Todos os
+comandos a seguir rodam a partir dela.
+
+### 3. Criar o ambiente virtual e instalar as dependências
+
+**Windows (PowerShell)**
+
+```powershell
 python -m venv .venv
-.venv\Scripts\activate
+.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-copy .env.example .env
-# edite o .env e preencha OLLAMA_API_KEY e GROQ_API_KEY
 ```
 
-### 3. Indexar a base no ChromaDB
+Se o PowerShell bloquear a ativação ("a execução de scripts foi desabilitada"), rode
+`Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` e ative de novo (vale só
+para aquele terminal). No Prompt de Comando (cmd), ative com `.venv\Scripts\activate.bat`.
+
+**Linux e macOS (Terminal)**
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Com o ambiente ativado, o terminal mostra `(.venv)` no início da linha. Se fechar o
+terminal, ative de novo antes de rodar o projeto (só a linha `Activate.ps1` ou
+`source .venv/bin/activate`).
+
+### 4. Configurar as chaves de API
+
+Crie o `.env` a partir do modelo:
+
+| Sistema | Comando |
+|---|---|
+| Windows | `copy .env.example .env` e depois `notepad .env` |
+| Linux | `cp .env.example .env` e depois `nano .env` |
+| macOS | `cp .env.example .env` e depois `open -e .env` |
+
+No arquivo, preencha `OLLAMA_API_KEY=` e `GROQ_API_KEY=` com as suas chaves e salve. As
+demais variáveis já vêm com a configuração final do projeto (ver "Variáveis de
+ambiente"). O `.env` está no `.gitignore` e nunca vai para o repositório.
+
+### 5. Indexar a base no ChromaDB (opcional)
 
 ```bash
 python -m src.rag.vector_store
 ```
 
+(Daqui em diante, com o ambiente ativado, o comando é `python` nos três sistemas.)
+
 Lê `data/knowledge_base/*.pdf` com o `PyMuPDFLoader`, divide em chunks, gera os
-embeddings `nomic-embed-text` e grava as coleções em `data/chroma_db/`. Na primeira
-vez, baixa o modelo de embeddings (~520 MB) para `data/.fastembed_cache/`. Esse
-passo é opcional: se for pulado, a primeira pergunta indexa sozinha. Se um PDF da
-base mudar, a coleção é reconstruída automaticamente na próxima consulta (impressão
-digital dos PDFs nos metadados da coleção).
+embeddings `nomic-embed-text` e grava as coleções em `data/chroma_db/`. Na primeira vez,
+baixa o modelo de embeddings (~520 MB) para `data/.fastembed_cache/`. Se este passo for
+pulado, a primeira pergunta na interface indexa sozinha (e demora mais). Se um PDF da
+base mudar, a coleção é reconstruída automaticamente na próxima consulta.
 
 Para editar a base: altere `data/knowledge_base/fontes/*.md` e rode
 `python -m scripts.gerar_pdfs_base`.
 
-### 4. Interface
-
-A partir da **raiz do projeto** (para o Streamlit carregar o tema em `.streamlit/config.toml`):
+### 6. Abrir a interface
 
 ```bash
-.venv\Scripts\activate
 streamlit run app/streamlit_app.py
 ```
 
-Abre em http://localhost:8501. Se a porta estiver ocupada, o Streamlit usa a próxima
-livre e mostra a URL no terminal. Indexar antes (passo 3) é opcional: se o vector store
-não existir, a primeira pergunta indexa a base e demora mais (download do modelo de
-embeddings, uma única vez).
+Abre no navegador em http://localhost:8501 (se a porta estiver ocupada, o Streamlit usa
+a próxima livre e mostra a URL no terminal). Para encerrar, `Ctrl+C` no terminal.
+
+**O que tem na tela**
 
 **Barra lateral**
 - **Modelo**: Gemma 4 (Ollama Cloud) ou Qwen 3.8 (Groq).
@@ -168,7 +222,17 @@ A recuperação é feita uma vez só e compartilhada entre as quatro.
 - "Qual a garantia do GW22K-HCA-20?" (não consta na base: deve recusar)
 - "Qual a melhor receita de bolo?" (fora do domínio: bloqueado pelo guardrail)
 
-### 5. Avaliação
+### 7. Avaliação (opcional)
+
+Instale as dependências de avaliação (uma vez, com o ambiente ativado):
+
+```bash
+pip install -r requirements-eval.txt
+pip install --no-deps ragas==0.4.3
+```
+
+O `--no-deps` evita o pacote `scikit-network`, que o RAGAS declara mas o projeto não
+usa e que, no Python 3.14, exigiria um compilador C++ para instalar.
 
 ```bash
 python -m evals.run_ragas --iteracao it6                  # RAGAS + rubrica da configuração final (Gemma)
