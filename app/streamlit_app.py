@@ -1,146 +1,219 @@
-"""ChargeGrid Assistant — interface Streamlit (Sprint 03).
+"""ChargeGrid Assistant — interface Streamlit (Sprint 04).
 
-Roda a chain LCEL (src/chain/builder.py) sobre dois providers (Ollama Cloud e
-Groq — ver `src/chain/builder.PROVIDERS`), com RAG sobre `knowledge/*.md`
-(src/rag/indexer.py) para respostas ancoradas em documento real (OCPP, Modbus,
-tarifação dinâmica, specs do charger). A interface fica enxuta por padrão: só
-o chat e o essencial; detalhes técnicos (JSON estruturado, guardrails,
-comparação com a versão legada, memória) ficam atrás de expanders.
+Consome o pipeline RAG completo (`src/chain/builder.conversar`): ChromaDB +
+nomic-embed-text, prompt RAG versionado, grounding e citação de fonte. Toda
+resposta mostra as fontes citadas (documento, seção e página) logo abaixo do
+texto, resolvidas a partir dos metadados dos trechos recuperados — não do texto
+gerado pelo modelo.
+
+Duas abas:
+- **Chat**: conversa com memória, com um dos dois modelos (Gemma 4 via Ollama
+  Cloud ou Qwen 3.8 via Groq) e a versão do prompt RAG escolhida.
+- **Multi-provider**: a mesma pergunta para os dois modelos × duas versões do
+  prompt RAG, lado a lado (bônus da Sprint 04).
+
+Execução (a partir da raiz do projeto):
+    streamlit run app/streamlit_app.py
 """
 from __future__ import annotations
 
+import sys
 import uuid
+from pathlib import Path
 
-import streamlit as st
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
-from src.chain.builder import PROVIDERS, conversar, modelo_padrao
-from src.chain.memoria import limpar_sessao, obter_sessao_existente, total_tokens
-from src.config import load_settings
-from src.manual_chat import conversar_legado, limpar_sessao_legada
+import streamlit as st  # noqa: E402
 
-st.set_page_config(page_title="ChargeGrid Assistant", page_icon="⚡", layout="centered")
+from src.chain.builder import PROVIDERS, conversar, modelo_padrao  # noqa: E402
+from src.chain.memoria import limpar_sessao, obter_sessao_existente, total_tokens  # noqa: E402
+from src.chain.multi_provider import VERSOES_PADRAO, consultar_multi  # noqa: E402
+from src.config import load_settings  # noqa: E402
+from src.rag.prompt_rag import VERSOES  # noqa: E402
+
+st.set_page_config(page_title="ChargeGrid Assistant", page_icon="⚡", layout="wide")
 
 settings = load_settings()
 
 if "session_id" not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
 if "mensagens" not in st.session_state:
-    st.session_state.mensagens = []  # [{"role", "content", "estruturado"?, "meta"?, "legado"?}]
+    st.session_state.mensagens = []
 
+
+def _fontes_payload(resposta) -> list[dict]:
+    return [
+        {"n": c.n, "titulo": c.titulo, "secao": c.secao, "pagina": c.pagina}
+        for c in resposta.citacoes
+    ]
+
+
+def _chunks_payload(resposta) -> list[dict]:
+    return [
+        {"n": c.n, "citacao": c.citacao, "score": c.score, "suspeito": c.suspeito, "texto": c.texto}
+        for c in resposta.chunks
+    ]
+
+
+def mostrar_fontes(fontes: list[dict], fora_da_base: bool, bloqueado: bool) -> None:
+    """Citação visível: sempre presente abaixo da resposta."""
+    if bloqueado:
+        st.caption("🚫 Bloqueado pelo guardrail antes de consultar a base.")
+        return
+    if fora_da_base:
+        st.warning("Informação não encontrada na base de conhecimento — nenhuma fonte citada.", icon="⚠️")
+        return
+    if not fontes:
+        st.caption("📚 Nenhuma fonte citada pelo modelo nesta resposta.")
+        return
+    linhas = "\n".join(f"- **[{f['n']}] {f['titulo']}** — {f['secao']} · p. {f['pagina']}" for f in fontes)
+    st.info(f"**📚 Fontes**\n\n{linhas}")
+
+
+def mostrar_trechos(chunks: list[dict]) -> None:
+    with st.expander(f"Trechos recuperados ({len(chunks)})"):
+        if not chunks:
+            st.caption("Nenhum trecho recuperado (pergunta barrada antes da busca ou abaixo do limiar configurado).")
+        for c in chunks:
+            alerta = " · ⚠️ instrução embutida removida" if c["suspeito"] else ""
+            st.markdown(f"**[{c['n']}] {c['citacao']}** · score {c['score']:.3f}{alerta}")
+            st.text(c["texto"][:1200])
+
+
+# --------------------------------------------------------------------------- sidebar
 with st.sidebar:
-    st.image("assets/goodwe_logo.png", width="stretch")
+    st.image(str(ROOT_DIR / "assets" / "goodwe_logo.png"), width="stretch")
     st.title("⚡ ChargeGrid Assistant")
-    st.caption("GoodWe · Sprint 03 — LangChain LCEL")
+    st.caption("GoodWe · Sprint 04 — RAG com ChromaDB")
 
-    provider = st.radio(
-        "Modelo",
-        options=list(PROVIDERS.keys()),
-        format_func=lambda p: PROVIDERS[p],
-        help="Comparativo multi-provider do Bloco B: Ollama Cloud vs. Groq.",
-    )
+    provider = st.radio("Modelo", options=list(PROVIDERS), format_func=lambda p: PROVIDERS[p])
     modelo = modelo_padrao(provider, settings)
     st.caption(f"`{modelo}`")
 
+    versoes = list(VERSOES)
+    prompt_rag = st.selectbox(
+        "Prompt RAG",
+        versoes,
+        index=versoes.index(settings.rag_prompt_version) if settings.rag_prompt_version in versoes else len(versoes) - 1,
+        help="Versões avaliadas com RAGAS — ver evals/SCORES_POR_ITERACAO.md.",
+    )
+    st.caption(VERSOES[prompt_rag].resumo)
+
     if st.button("Limpar conversa", width="stretch"):
         limpar_sessao(st.session_state.session_id)
-        limpar_sessao_legada(st.session_state.session_id)
         st.session_state.mensagens = []
         st.rerun()
 
     with st.expander("Avançado"):
-        modo_comparativo = st.toggle(
-            "Comparar com versão legada (Sprints 1/2)",
-            value=False,
-            help="Roda a mesma mensagem na chain LCEL e na versão manual (f-strings, sem schema).",
+        k = st.slider("k (trechos recuperados)", 1, 10, settings.rag_k)
+        modos_busca = ["hibrida_expandida", "hibrida", "vetorial"]
+        busca = st.selectbox(
+            "Busca",
+            modos_busca,
+            index=modos_busca.index(settings.rag_busca) if settings.rag_busca in modos_busca else 0,
+            help="hibrida_expandida: vetorial + BM25 com expansão de consulta (padrão, iteração 5).",
         )
         ignorar_guardrails = st.toggle("Desativar guardrails (debug)", value=False)
-
+        st.caption(
+            f"temperature={settings.temperature} · top_p={settings.top_p} · max_tokens={settings.max_tokens} · "
+            f"limiar={settings.rag_limiar_relevancia} · embeddings=nomic-embed-text ({settings.embeddings_backend})"
+        )
         historico = obter_sessao_existente(st.session_state.session_id)
         tokens_atual = total_tokens(historico) if historico else 0
-        st.caption(
-            f"Memória: ConversationSummaryBufferMemory (LangChain) · "
-            f"{tokens_atual}/{settings.memoria_limite_tokens} tokens"
-        )
+        st.caption(f"Memória: {tokens_atual}/{settings.memoria_limite_tokens} tokens")
         st.progress(min(tokens_atual / settings.memoria_limite_tokens, 1.0))
-        resumo_atual = historico.moving_summary_buffer if historico else ""
-        if resumo_atual:
+        if historico and historico.moving_summary_buffer:
             st.caption("Resumo atual da conversa:")
-            st.text(resumo_atual)
+            st.text(historico.moving_summary_buffer)
 
-    if provider == "ollama" and not settings.ollama_api_key:
+    if not settings.ollama_api_key:
         st.error("OLLAMA_API_KEY não configurada no .env.")
     if provider == "groq" and not settings.groq_api_key:
         st.error("GROQ_API_KEY não configurada no .env.")
 
-for msg in st.session_state.mensagens:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
-        if msg.get("meta"):
-            st.caption(msg["meta"])
-        if msg.get("fontes_rag"):
-            st.caption("📚 " + ", ".join(msg["fontes_rag"]))
-        if msg.get("estruturado") is not None:
+aba_chat, aba_multi = st.tabs(["💬 Chat", "🔀 Multi-provider (2 modelos × 2 prompts)"])
+
+# --------------------------------------------------------------------------- chat
+with aba_chat:
+    for msg in st.session_state.mensagens:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+            if msg["role"] == "assistant":
+                mostrar_fontes(msg["fontes"], msg["fora_da_base"], msg["bloqueado"])
+                st.caption(msg["meta"])
+                mostrar_trechos(msg["chunks"])
+                with st.expander("Detalhes técnicos"):
+                    st.json(msg["estruturado"])
+
+    entrada = st.chat_input("Pergunte sobre tarifas, regimento, Modbus/OCPP, carregador GoodWe...")
+    if entrada:
+        st.session_state.mensagens.append({"role": "user", "content": entrada})
+        with st.chat_message("user"):
+            st.markdown(entrada)
+
+        with st.chat_message("assistant"):
+            with st.spinner("Consultando a base de conhecimento..."):
+                try:
+                    resposta = conversar(
+                        st.session_state.session_id, entrada, model=modelo, provider=provider,
+                        ignorar_guardrails=ignorar_guardrails, prompt_rag_version=prompt_rag, k=k, busca=busca,
+                    )
+                except Exception as exc:  # noqa: BLE001 - erro de provider não pode derrubar a UI
+                    st.error(f"Falha ao consultar {PROVIDERS[provider]}: {exc}")
+                    st.stop()
+            texto = resposta.resultado.justificativa
+            fontes = _fontes_payload(resposta)
+            chunks = _chunks_payload(resposta)
+            meta = (
+                f"{PROVIDERS[provider]} · prompt RAG {prompt_rag} · k={k} · busca {busca} · "
+                f"decisão: {resposta.resultado.decisao.value} · {resposta.latencia_s:.2f}s"
+            )
+            estruturado = resposta.resultado.model_dump(mode="json")
+
+            st.markdown(texto)
+            mostrar_fontes(fontes, resposta.resultado.fora_da_base, resposta.bloqueado_por_guardrail)
+            st.caption(meta)
+            mostrar_trechos(chunks)
             with st.expander("Detalhes técnicos"):
-                st.json(msg["estruturado"])
-        if msg.get("legado") is not None:
-            with st.expander("Versão legada (Sprints 1/2)"):
-                st.markdown(msg["legado"]["texto"])
+                st.json(estruturado)
 
-entrada = st.chat_input("Pergunte sobre potência, faturamento ou diagnóstico de um carregador...")
-
-if entrada:
-    st.session_state.mensagens.append({"role": "user", "content": entrada})
-    with st.chat_message("user"):
-        st.markdown(entrada)
-
-    with st.chat_message("assistant"):
-        with st.spinner("Consultando ChargeGrid Assistant..."):
-            resposta = conversar(
-                st.session_state.session_id,
-                entrada,
-                model=modelo,
-                provider=provider,
-                ignorar_guardrails=ignorar_guardrails,
-            )
-        st.markdown(resposta.resultado.justificativa)
-
-        badge = "🚫 guardrail" if resposta.bloqueado_por_guardrail else f"✅ {PROVIDERS[provider]}"
-        meta = f"{badge} · decisão: {resposta.resultado.decisao.value} · {resposta.latencia_s:.2f}s"
-        st.caption(meta)
-        if resposta.fontes_rag:
-            st.caption("📚 " + ", ".join(resposta.fontes_rag))
-
-        estruturado = resposta.resultado.model_dump(mode="json")
-        with st.expander("Detalhes técnicos"):
-            st.json(estruturado)
-            st.caption(
-                f"tokens entrada≈{resposta.tokens_entrada} · tokens saída≈{resposta.tokens_saida}"
-            )
-
-        legado_dict = None
-        if modo_comparativo:
-            # A versão legada sempre roda via Ollama (settings.model_primary) — ela
-            # reconstrói a arquitetura das Sprints 1/2, não o provider selecionado no
-            # chat atual. Passar o modelo do Provider B (Groq) aqui quebraria (o
-            # cliente interno é sempre o da Ollama Cloud).
-            with st.spinner("Rodando versão legada (Sprints 1/2) para comparação..."):
-                legado = conversar_legado(f"{st.session_state.session_id}-legado", entrada)
-            legado_dict = {"texto": legado.texto}
-            with st.expander("Versão legada (Sprints 1/2)"):
-                st.caption(f"Sempre via Ollama Cloud (`{settings.model_primary}`), independente do provider acima.")
-                st.markdown(legado.texto)
-                st.caption(
-                    f"latência: {legado.latencia_s:.2f}s · "
-                    f"tokens entrada: {legado.tokens_entrada} · tokens saída: {legado.tokens_saida}"
-                )
-
-    st.session_state.mensagens.append(
-        {
-            "role": "assistant",
-            "content": resposta.resultado.justificativa,
-            "meta": meta,
-            "fontes_rag": resposta.fontes_rag,
+        st.session_state.mensagens.append({
+            "role": "assistant", "content": texto, "fontes": fontes, "chunks": chunks, "meta": meta,
+            "fora_da_base": resposta.resultado.fora_da_base, "bloqueado": resposta.bloqueado_por_guardrail,
             "estruturado": estruturado,
-            "legado": legado_dict,
-        }
+        })
+
+# --------------------------------------------------------------------------- multi-provider
+with aba_multi:
+    st.markdown(
+        "A mesma pergunta para **Gemma 4 (Ollama Cloud)** e **Qwen 3.8 (Groq)**, cada um com as versões "
+        f"**{' e '.join(VERSOES_PADRAO)}** do prompt RAG. A busca é feita uma vez e os mesmos trechos vão "
+        "para as quatro combinações — a diferença entre as respostas vem só do modelo e do prompt."
     )
+    with st.form("multi"):
+        pergunta_multi = st.text_input("Pergunta", placeholder="Ex.: Qual a tarifa para veículos de frota?")
+        enviar = st.form_submit_button("Consultar as 4 combinações")
+    if enviar and pergunta_multi.strip():
+        with st.spinner("Consultando os dois modelos com os dois prompts..."):
+            chunks_multi, resultados = consultar_multi(pergunta_multi.strip(), k=k)
+        colunas = st.columns(len(VERSOES_PADRAO))
+        for indice, r in enumerate(resultados):
+            with colunas[indice % len(colunas)]:
+                st.subheader(r.rotulo)
+                st.caption(f"`{r.modelo}`")
+                if r.erro:
+                    st.error(r.erro)
+                    continue
+                st.markdown(r.resposta.resultado.justificativa)
+                mostrar_fontes(
+                    _fontes_payload(r.resposta), r.resposta.resultado.fora_da_base, r.resposta.bloqueado_por_guardrail
+                )
+                st.caption(f"{r.resposta.latencia_s:.2f}s · decisão: {r.resposta.resultado.decisao.value}")
+                st.divider()
+        if chunks_multi:
+            mostrar_trechos([
+                {"n": c.n, "citacao": c.citacao, "score": c.score, "suspeito": c.suspeito, "texto": c.texto}
+                for c in chunks_multi
+            ])
