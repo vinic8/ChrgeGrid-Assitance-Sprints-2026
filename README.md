@@ -1,83 +1,91 @@
-# ChargeGrid Assistant — Sprint 03 (Refactory LangChain LCEL)
+# ChargeGrid Assistant — Sprint 04 (RAG medido, confiável e utilizável)
 
-Continuação do projeto EV Challenge — GoodWe (Sprints 1 e 2), resolvendo o desafio
-ChargeGrid Intelligence: orquestrar a recarga comercial de eletropostos GoodWe reais
-(linha HCA G2), registrar o ciclo da sessão (via dados de OCPP e Modbus/RS485) e aplicar
-políticas de tarifação dinâmica. Núcleo conversacional em **LangChain LCEL**
-(`chain = retrieval | prompt | llm | parser`), com **RAG sobre uma base de conhecimento
-técnica real** (`knowledge/*.md`, vetor store FAISS), memória por sessão em **summary
-memory**, **saída estruturada validada em Pydantic v2**, **context engineering
-(XML tagging)** e **guardrails** de escopo/jailbreak — tudo em código Python modular,
-com interface gráfica em **Streamlit**.
+Continuação do projeto EV Challenge — GoodWe (Sprints 1, 2 e 3). O ChargeGrid Assistant
+apoia o operador de eletropostos GoodWe: orquestração de potência, registro do ciclo de
+recarga (OCPP/Modbus), faturamento com tarifação por posto horário, regras de recarga
+compartilhada em condomínio e diagnóstico de falhas do carregador GoodWe HCA G2.
 
-O relatório de evolução (resumo Sprints 1/2 → Sprint 03, decisões de refactory,
-tabela comparativa antes/depois, comparativo multi-provider e problemas/soluções)
-é entregue em PDF em `docs/` — o conteúdo-fonte está em
-[`docs/RELATORIO_EVOLUCAO.pdf`](docs/RELATORIO_EVOLUCAO.pdf).
+Na Sprint 04 o RAG do projeto passou a ser **medido, confiável e utilizável**:
 
-**Multi-provider**: o chatbot roda sobre dois providers, selecionáveis na própria
-interface — **Provider A: Ollama Cloud** (`gemma4:cloud`) e **Provider B: Groq**
-(`qwen/qwen3.8-27b`). O plano era reintroduzir o Llama 3.3 das Sprints 1/2 via Groq,
-mas esse modelo foi descontinuado nesse provider durante o desenvolvimento — ver
-`docs/RELATORIO_EVOLUCAO.pdf` para o detalhamento da troca.
+- **Vetorização**: base expandida (7 PDFs) em **ChromaDB persistente** com embeddings
+  **`nomic-embed-text`**.
+- **Pipeline RAG end-to-end**: `PyMuPDFLoader → RecursiveCharacterTextSplitter →
+  retriever → prompt RAG versionado`, em módulos separados em `src/rag/`.
+- **Grounding + citação**: responde só com o contexto recuperado e cita **documento,
+  seção e página** em toda resposta. A citação é resolvida pelos metadados do trecho,
+  não pelo texto gerado.
+- **Avaliação**: **RAGAS** (`faithfulness`, `answer_relevancy`) por iteração, mais a
+  rubrica manual de fallback aplicada em paralelo.
+- **Interface web** (Streamlit) com citação visível e modo **multi-provider**
+  (2 modelos × 2 prompts).
+- **Segurança**: recusa fora do contexto (guardrail de escopo + regra do prompt), proteção contra
+  prompt injection via documentos e proibição de inventar especificações.
 
-## O que mudou desde as Sprints 1/2
+**Modelos (multi-provider)**: **Gemma 4** (`gemma4:cloud`) via **Ollama Cloud** e
+**Qwen 3.8** (`qwen/qwen3.8-27b`) via **Groq**, selecionáveis na interface.
 
-| | Sprints 1/2 | Sprint 03 |
-|---|---|---|
-| Execução | Google Colab, célula a célula | Python modular + Streamlit |
-| Orquestração | Chamadas diretas ao SDK da Groq | LangChain LCEL (`prompt \| llm \| parser`) |
-| Modelo/Provider | Llama 3.3 70B via Groq (único provider) | Multi-provider: `gemma4:cloud` via **Ollama Cloud** + `qwen/qwen3.8-27b` via **Groq** |
-| Memória | Lista de mensagens sem limite | `ConversationSummaryBufferMemory` por sessão (ver seção "Memória conversacional") |
-| Conhecimento técnico | Só o que estava no prompt (texto corrido) | RAG sobre `knowledge/*.md` (OCPP, Modbus, tarifação dinâmica, specs reais GoodWe) |
-| Saída | Texto livre | Schema Pydantic v2 validado (`ConsultaRecarga`) |
-| Prompt | Texto corrido | Versionado, com XML tagging (`prompts/`) |
-| Segurança | Só instrução no prompt | Guardrails em código + instrução no prompt + orientação a profissional habilitado |
-| Avaliação | Qualitativa (P1-P5, manual) | Eval set automático reexecutável (13 casos, incl. RAG) |
+Resultados: [`evals/SCORES_POR_ITERACAO.md`](evals/SCORES_POR_ITERACAO.md) ·
+[`docs/relatorio_rag.md`](docs/relatorio_rag.md) ·
+[`docs/relatorio_modelos.md`](docs/relatorio_modelos.md) ·
+[`docs/RELATORIO_EVOLUCAO_SPRINT04.pdf`](docs/RELATORIO_EVOLUCAO_SPRINT04.pdf) (relatório de evolução).
 
 ## Estrutura do projeto
 
 ```
 SPRINT-03-IA/
-├── app.py                        # Interface Streamlit (chat + comparativo ao vivo)
-├── .streamlit/
-│   └── config.toml               # Tema de cores GoodWe (vermelho da marca)
-├── knowledge/                    # Base de conhecimento do RAG (fonte de verdade técnica)
-│   ├── ocpp.md                   # Mensagens do ciclo de sessão e códigos de erro OCPP
-│   ├── modbus_rs485.md           # Códigos de exceção Modbus e diagnóstico físico
-│   ├── politica_tarifaria.md     # Tarifação dinâmica por posto horário, frota, descontos
-│   └── charger_goodwe.md         # Specs reais do EV Charger GoodWe (linha HCA G2)
+├── app/
+│   └── streamlit_app.py          # Interface (chat com citação visível + aba multi-provider)
 ├── data/
-│   └── faiss_index/               # Índice vetorial (gerado, não versionado - ver .gitignore)
-├── prompts/
-│   ├── system_prompt_v1.md       # Baseline (Sprints 1/2), sem marcação
-│   ├── system_prompt_v2.md       # XML tagging (context engineering)
-│   ├── system_prompt_v3.md       # v2 + bloco <idioma> (reforço anti-jailbreak)
-│   ├── system_prompt_v4.md       # + <base_de_conhecimento> (RAG) e <limites_de_atuacao>
-│   ├── system_prompt_v5.md       # v4 + contenção de distração por RAG irrelevante
-│   ├── system_prompt_v6.md       # Versão ativa: generaliza para eletropostos GoodWe reais (fim da premissa FIAP)
-│   └── VERSOES.md                # Tabela de versões: o que mudou, por quê, ganho medido
+│   ├── knowledge_base/           # Base expandida em PDF (entrada do PyMuPDFLoader)
+│   │   ├── manual_produto_goodwe_hca_g2.pdf     # Datasheet/manual oficial GoodWe HCA G2
+│   │   ├── mapa_modbus_hca_g2.pdf               # Mapa Modbus oficial (exceções, falhas, registradores)
+│   │   ├── interoperabilidade_ocpp.pdf          # Camada OCPP ↔ Modbus
+│   │   ├── manual_operacional_ev_chargeops.pdf  # Manual operacional ChargeGrid / EV ChargeOps
+│   │   ├── regimento_recarga_condominial.pdf    # Regimento de recarga compartilhada em condomínio
+│   │   ├── faq_carregamento.pdf                 # FAQ de carregamento
+│   │   ├── tabelas_tarifarias.pdf               # Tabelas tarifárias (postos horários, frota, ocupação)
+│   │   └── fontes/                              # Fonte editável (.md) de cada PDF
+│   └── chroma_db/                # Vector store persistente (gerado, não versionado)
 ├── src/
-│   ├── config.py                 # Variáveis de ambiente e caminhos centralizados
-│   ├── tokens.py                 # Contagem de tokens (aproximação via tiktoken)
-│   ├── manual_chat.py            # Reconstrução da versão manual (Sprints 1/2) p/ comparativo
-│   ├── chain/
-│   │   ├── builder.py            # Chain LCEL retrieval | prompt | llm | parser + guardrails
-│   │   └── memoria.py            # ConversationSummaryBufferMemory (LangChain) por sessão
+│   ├── config.py                 # Variáveis de ambiente e caminhos
 │   ├── rag/
-│   │   └── indexer.py            # Indexação FAISS de knowledge/*.md e retriever
-│   ├── schemas/
-│   │   └── consulta_recarga.py   # Schema Pydantic v2 do domínio EV
-│   └── guardrails/
-│       ├── scope_validator.py    # Recusa de pedidos fora do domínio GoodWe
-│       └── moderation.py         # Recusa de jailbreak/prompt injection
+│   │   ├── loader.py             # PyMuPDFLoader + normalização Unicode
+│   │   ├── chunking.py           # RecursiveCharacterTextSplitter (por página | por seção)
+│   │   ├── embeddings.py         # nomic-embed-text (FastEmbed local | Ollama)
+│   │   ├── vector_store.py       # ChromaDB persistente + reindexação automática
+│   │   ├── retriever.py          # top-k híbrido (vetorial + BM25 com expansão de consulta)
+│   │   ├── sanitizacao.py        # Proteção contra prompt injection via documentos
+│   │   └── prompt_rag.py         # Prompt RAG versionado (v1 a v4)
+│   ├── chain/
+│   │   ├── builder.py            # Chain LCEL: prompt RAG | llm | parser + citações
+│   │   ├── multi_provider.py     # Bônus: 2 modelos × 2 prompts em paralelo
+│   │   └── memoria.py            # ConversationSummaryBufferMemory por sessão
+│   ├── guardrails/               # Escopo e jailbreak (antes da chain)
+│   ├── schemas/consulta_recarga.py  # Saída estruturada (Pydantic v2), com fontes_citadas e fora_da_base
+│   ├── manual_chat.py            # Versão legada (Sprints 1/2), baseline "antes"
+│   └── tokens.py
+├── prompts/
+│   ├── system_prompt_v1..v7.md   # Persona (v7 ativa)
+│   └── VERSOES.md
 ├── evals/
-│   ├── eval_cases.py             # Eval set (P1-P5 + guardrail/memória/RAG/limites de atuação)
-│   ├── run_eval.py               # Reexecuta o eval: legado vs LCEL (relatório §3)
-│   ├── compare_models.py         # Reexecuta o eval multi-provider (Bloco B, relatório §3.1)
-│   └── results/                  # Saída de cada execução (.json não versionado, .md versionado)
+│   ├── rag_eval_set.py           # Eval set do RAG (18 respondíveis + 3 recusas)
+│   ├── run_ragas.py              # RAGAS + rubrica por iteração
+│   ├── rubrica_manual.py         # Fallback manual do RAGAS
+│   ├── RUBRICA_FALLBACK.md       # Critérios da rubrica e equivalência
+│   ├── test_injecao.py           # Teste de prompt injection via documentos
+│   ├── test_recuperacao.py       # Recuperação com perguntas fora do eval set (sem LLM)
+│   ├── ragas_compat.py           # Shim RAGAS 0.4 × langchain-community 0.4
+│   ├── SCORES_POR_ITERACAO.md    # Tabela consolidada de scores
+│   ├── results/                  # Resultado de cada execução (.md e .json)
+│   └── eval_cases.py, run_eval.py, compare_models.py, manual_test_10.py   # evals da Sprint 03
+├── scripts/
+│   └── gerar_pdfs_base.py        # Fontes .md → PDFs da base
 ├── docs/
-│   └── RELATORIO_EVOLUCAO.pdf    # Conteúdo-fonte do relatório (entregue em PDF na pasta docs/)
+│   ├── relatorio_rag.md          # Pipeline, chunking, prompt RAG versionado e iterações
+│   ├── relatorio_modelos.md      # Comparativo Gemma × Qwen e parâmetros
+│   ├── RELATORIO_EVOLUCAO_SPRINT04.pdf   # Relatório de evolução da Sprint 04 (até 5 páginas)
+│   └── RELATORIO_EVOLUCAO_SPRINT03.pdf   # Relatório de evolução da Sprint 03 (histórico)
+├── INTEGRANTES.txt               # Nome, RM e turma dos integrantes
 ├── requirements.txt
 └── .env.example
 ```
@@ -86,16 +94,13 @@ SPRINT-03-IA/
 
 ### 1. Pré-requisitos
 
-- Python 3.11+ recomendado (ver nota de compatibilidade abaixo se estiver no 3.14).
-- Uma API key da **Ollama Cloud** (Provider A): crie em https://ollama.com/settings/keys.
-  Não é necessário instalar o Ollama localmente — o projeto fala direto com
-  `https://ollama.com`.
-- Uma API key da **Groq** (Provider B): crie em https://console.groq.com/keys.
+- Python 3.11+ (testado em 3.14).
+- API key da **Ollama Cloud** (Gemma 4): https://ollama.com/settings/keys
+- API key da **Groq** (Qwen 3.8): https://console.groq.com/keys
 
 ### 2. Instalação
 
 ```bash
-cd C:\PROJETOS\SPRINT-03-IA
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
@@ -103,152 +108,125 @@ copy .env.example .env
 # edite o .env e preencha OLLAMA_API_KEY e GROQ_API_KEY
 ```
 
-### 3. Indexar a base de conhecimento (RAG)
+### 3. Indexar a base no ChromaDB
 
 ```bash
-python -m src.rag.indexer
+python -m src.rag.vector_store
 ```
 
-Lê `knowledge/*.md`, gera embeddings locais (FastEmbed, sem API key) e salva o
-índice FAISS em `data/faiss_index/`. **Passo único** — só precisa rodar de novo se
-editar os arquivos em `knowledge/`. Se pular este passo, a primeira pergunta feita
-no chat ou no eval constrói o índice automaticamente (mais lento na primeira vez).
+Lê `data/knowledge_base/*.pdf` com o `PyMuPDFLoader`, divide em chunks, gera os
+embeddings `nomic-embed-text` e grava as coleções em `data/chroma_db/`. Na primeira
+vez, baixa o modelo de embeddings (~520 MB) para `data/.fastembed_cache/`. Esse
+passo é opcional: se for pulado, a primeira pergunta indexa sozinha. Se um PDF da
+base mudar, a coleção é reconstruída automaticamente na próxima consulta (impressão
+digital dos PDFs nos metadados da coleção).
 
-### 4. Rodar a interface
+Para editar a base: altere `data/knowledge_base/fontes/*.md` e rode
+`python -m scripts.gerar_pdfs_base`.
+
+### 4. Interface
+
+A partir da **raiz do projeto** (para o Streamlit carregar o tema em `.streamlit/config.toml`):
 
 ```bash
-streamlit run app.py
+.venv\Scripts\activate
+streamlit run app/streamlit_app.py
 ```
 
-Abre automaticamente no navegador em **http://localhost:8501** (se essa porta estiver
-ocupada, o Streamlit sobe na próxima livre, ex.: `:8502`, e mostra a URL no terminal).
+Abre em http://localhost:8501. Se a porta estiver ocupada, o Streamlit usa a próxima
+livre e mostra a URL no terminal. Indexar antes (passo 3) é opcional: se o vector store
+não existir, a primeira pergunta indexa a base e demora mais (download do modelo de
+embeddings, uma única vez).
 
-### 5. Rodar o eval set (gera a tabela antes/depois do relatório)
+**Barra lateral**
+- **Modelo**: Gemma 4 (Ollama Cloud) ou Qwen 3.8 (Groq).
+- **Prompt RAG**: v1 a v4 (`src/rag/prompt_rag.py`; v4 é a padrão), com o resumo do que
+  muda em cada uma.
+- **Avançado**: `k` (trechos recuperados), modo de busca (`hibrida_expandida`, `hibrida`
+  ou `vetorial`), desligar guardrails para depuração, parâmetros de geração em uso e uso
+  da memória da conversa.
+
+**Aba Chat**: conversa com memória. Cada resposta mostra:
+- o texto da resposta;
+- **📚 Fontes**: lista `[id] Documento — Seção · página`. Se a informação não está na
+  base, aparece um aviso de "não encontrada na base" no lugar das fontes; se a pergunta
+  foi barrada pelo guardrail, aparece 🚫;
+- linha de metadados (modelo, prompt, k, busca, decisão, latência);
+- **Trechos recuperados**: os trechos enviados ao modelo, com score de relevância. Um
+  trecho em que a sanitização removeu uma instrução embutida aparece marcado com ⚠️;
+- **Detalhes técnicos**: a saída estruturada completa (schema `ConsultaRecarga`).
+
+**Aba Multi-provider** (bônus): a mesma pergunta para os dois modelos × as versões v2 e v4
+do prompt RAG, em quatro respostas lado a lado, cada uma com suas fontes e sua latência.
+A recuperação é feita uma vez só e compartilhada entre as quatro.
+
+**Perguntas para testar**
+- "O carregador C11 fez uma recarga das 18:30 às 19:00, com consumo de 5 kWh. Quanto fica o faturamento?"
+- "No condomínio, em quanto tempo preciso tirar o carro da vaga depois da recarga?"
+- "O que significa o código de exceção Modbus 0x0002?"
+- "Qual a potência do modelo GW30K-HCA-20?" (modelo inexistente: o assistente não deve inventar)
+- "Qual a garantia do GW22K-HCA-20?" (não consta na base: deve recusar)
+- "Qual a melhor receita de bolo?" (fora do domínio: bloqueado pelo guardrail)
+
+### 5. Avaliação
 
 ```bash
-python -m evals.run_eval
+python -m evals.run_ragas --iteracao it6                  # RAGAS + rubrica da configuração final (Gemma)
+python -m evals.run_ragas --iteracao it3 --provider groq  # comparativo de modelos com o Qwen
+python -m evals.run_ragas --iteracao legado               # Sprints 1/2 (sem RAG)
+python -m evals.test_injecao                              # prompt injection via documentos
+python -m evals.test_recuperacao --com-llm                # perguntas fora do eval set: recuperação e pipeline completo
+python -m src.chain.multi_provider "Qual a tarifa para frota?"   # bônus multi-provider no terminal
 ```
-
-Isso chama o modelo de verdade (Ollama Cloud) nas duas versões (legada e LCEL) para
-cada caso de `evals/eval_cases.py` (13 casos, incluindo RAG e limites de atuação), e
-grava `evals/results/comparativo_<timestamp>.md` com a tabela pronta para colar no
-relatório §3.
-
-### 6. Rodar o comparativo multi-provider (Bloco B)
-
-```bash
-python -m evals.compare_models
-```
-
-Roda os mesmos 13 casos na mesma chain LCEL, variando só o provider (Ollama Cloud vs.
-Groq), e grava `evals/results/modelos_<timestamp>.md`. Resultado consolidado no
-relatório §3.1.
 
 ## Variáveis de ambiente
 
-| Variável | Descrição | Obrigatória |
+| Variável | Descrição | Padrão |
 |---|---|---|
-| `OLLAMA_API_KEY` | Chave da Ollama Cloud — Provider A (https://ollama.com/settings/keys) | ✅ Sim |
-| `OLLAMA_HOST` | Host da API (default `https://ollama.com`) | Não |
-| `MODEL_PRIMARY` | Modelo do Provider A (default `gemma4:cloud`) | Não |
-| `GROQ_API_KEY` | Chave da Groq — Provider B (https://console.groq.com/keys) | ✅ Sim |
-| `MODEL_GROQ` | Modelo do Provider B (default `qwen/qwen3.8-27b`) | Não |
-| `TEMPERATURE` | Temperatura de geração, usada nos dois providers (default `0.2`) | Não |
-| `MAX_TOKENS` | Máximo de tokens de saída por resposta (default `600`) | Não |
-| `MEMORIA_LIMITE_TOKENS` | Limite de tokens da memória por sessão (default `1500`) | Não |
-| `SYSTEM_PROMPT_VERSION` | Versão do prompt ativa: `v1` a `v6` (default `v6`) | Não |
+| `OLLAMA_API_KEY` | Chave da Ollama Cloud (Gemma 4) | obrigatória |
+| `GROQ_API_KEY` | Chave da Groq (Qwen 3.8) | obrigatória |
+| `MODEL_PRIMARY` / `MODEL_GROQ` | Modelos dos dois providers | `gemma4:cloud` / `qwen/qwen3.8-27b` |
+| `TEMPERATURE` / `TOP_P` / `MAX_TOKENS` | Parâmetros de geração | `0` / `0.9` / `800` |
+| `SYSTEM_PROMPT_VERSION` | Persona ativa | `v7` |
+| `RAG_PROMPT_VERSION` | Prompt RAG ativo | `v4` |
+| `RAG_K` | Top-k da recuperação | `6` |
+| `RAG_CHUNKING` | `por_secao` ou `recursivo_basico` | `por_secao` |
+| `RAG_BUSCA` | `hibrida_expandida` (vetorial + BM25 com expansão de consulta), `hibrida` ou `vetorial` | `hibrida_expandida` |
+| `RAG_LIMIAR_RELEVANCIA` | Porta sobre o melhor score de cosseno (0 = desligada; ver `docs/relatorio_rag.md` §5) | `0` |
+| `EMBEDDINGS_BACKEND` | `fastembed` (local) ou `ollama` | `fastembed` |
 
-Nenhuma chave deve aparecer no código nem ser commitada — `.env` está no `.gitignore`.
+Nenhuma chave fica no código nem no histórico do Git: o `.env` está no `.gitignore`.
 
-## Nota de compatibilidade (Python 3.14)
+## Decisões importantes
 
-Se a máquina tem Python 3.14 instalado. É uma versão muito recente; se `pip install`
-falhar ao compilar alguma dependência nativa (`pydantic-core`, `tiktoken`), crie o
-venv com uma versão mais testada (3.11–3.12) — `py -3.12 -m venv .venv`, se disponível
-— e repita a instalação.
+- **`nomic-embed-text` sem a Ollama Cloud**: a Ollama Cloud não serve modelos de
+  embedding pela API. Testamos `nomic-embed-text` e `embeddinggemma` com a mesma chave
+  que funciona no chat e as duas chamadas retornaram HTTP 401. Por isso o mesmo
+  modelo (`nomic-ai/nomic-embed-text-v1.5`, o que a Ollama distribui como
+  `nomic-embed-text`) roda localmente via FastEmbed. O backend `ollama` continua
+  disponível (`EMBEDDINGS_BACKEND=ollama`) para um Ollama local ou para o caso de a
+  Cloud liberar o endpoint.
+- **Busca híbrida com expansão de consulta**: em português, o nomic-embed-text dá peso
+  demais a palavras frequentes. Por isso o retriever funde o ranking vetorial com BM25
+  (Reciprocal Rank Fusion). O operador também não usa o vocabulário do documento
+  ("quanto custa" × "tarifa do posto"), então a consulta do BM25 é expandida com os
+  termos do documento. Com isso, a seção certa é recuperada em 10 de 10 perguntas novas
+  (`python -m evals.test_recuperacao`), contra 4/10 na busca só vetorial. Detalhes e
+  números em `docs/relatorio_rag.md`.
+- **Sem porta de relevância**: um limiar sobre o score de similaridade foi usado nas
+  iterações 3 a 5, mas recusava perguntas legítimas curtas (6/10 respondidas, contra
+  10/10 sem ele). A recusa fora do contexto fica com o guardrail de escopo e com a regra
+  do prompt RAG (6/6 perguntas fora do domínio recusadas). Detalhes em
+  `docs/relatorio_rag.md` §5.
+- **Documentos ilustrativos**: o manual de produto e o mapa Modbus vêm da documentação
+  oficial GoodWe. O manual operacional, o regimento condominial, o FAQ e as tabelas
+  tarifárias são ilustrativos, e cada um declara isso na nota de proveniência do
+  próprio documento.
 
-## Memória conversacional
+## Memória, schema e guardrails (herdados da Sprint 03)
 
-O chatbot usa **`ConversationSummaryBufferMemory`**, a classe do próprio LangChain
-(`src/chain/memoria.py`, importada de `langchain_classic.memory`. Ela guarda o histórico literal da sessão até
-`MEMORIA_LIMITE_TOKENS` (default 1500) e, ao estourar, envia a parte mais antiga da
-conversa para o próprio LLM (o mesmo provider/modelo em uso) gerar um **resumo em
-texto livre**, que substitui as mensagens resumidas — comportamento nativo da
-classe (`save_context` → `prune()` → `predict_new_summary()`), não reimplementado
-à mão. O prompt de resumo (`_PROMPT_RESUMO`) foi customizado em português, pedindo
-para preservar fatos operacionais (IDs de carregador/veículo, potências, limites,
-tarifas, decisões) e descartar conversa fiada.
-
-**Nota de depreciação (decisão consciente)**: `ConversationSummaryBufferMemory` está
-marcada para remoção no LangChain 2.0 (movida para `langchain_classic`; o próprio
-time recomenda `RunnableWithMessageHistory`/checkpointing como substituto). Optamos
-por usá-la mesmo assim porque é um requisito explícito do desafio, aceitando o aviso
-de depreciação em troca de aderência literal. Detalhe técnico: a classe conta tokens
-via `llm.get_num_tokens_from_messages`, que por padrão exige o pacote `transformers`
-(tokenizer GPT-2 baixado da internet) — para não introduzir essa dependência pesada,
-`_MemoriaChargeGrid` (subclasse de `ConversationSummaryBufferMemory`, mesmo tipo,
-só esse um método trocado) substitui só a contagem de tokens por `tiktoken`
-(`src/tokens.py`), mantendo o resto do comportamento herdado sem alteração.
-
-Na interface, o expander "Avançado" mostra o resumo atual da sessão
-(`memoria.moving_summary_buffer`) sempre que ele existir. A memória é por
-`session_id` (`st.session_state.session_id` no Streamlit) — cada aba/sessão do
-navegador tem seu próprio histórico, isolado em memória de processo (não persiste
-em disco nem banco).
-
-## RAG — base de conhecimento (`knowledge/`)
-
-O assistente resolve o problema real do desafio ChargeGrid Intelligence (não só
-conversa sobre ele) consultando uma base de conhecimento técnica antes de responder:
-
-- **`modbus_rs485.md`** — extraído do mapa de registradores Modbus **real** do
-  GoodWe HCA G2 (documento oficial do fabricante): os 4 códigos de exceção que
-  o equipamento realmente define (`0x0001`–`0x0004`), os bits de falha reais
-  (registradores `10001`–`10008`, incluindo `falha de aterramento` no bit1 do
-  registrador `10002`) e registradores operacionais (status, limite de
-  disjuntor, potência máxima).
-- **`charger_goodwe.md`** — specs **reais** do datasheet GoodWe HCA G2: os
-  3 modelos por potência (GW7K/11K/22K-HCA-20), proteções, certificações e o
-  protocolo de comunicação declarado pelo fabricante (**Modbus TCP**, não OCPP
-  — ver nota abaixo). O limite de rede/disjuntor não tem valor padrão fixo:
-  cada eletroposto real tem o seu, informado na conversa ou lido dos
-  registradores Modbus `10026`/`10039` daquele equipamento.
-- **`ocpp.md`** — como a documentação oficial confirma que o HCA G2 fala Modbus
-  TCP e não OCPP nativamente, este documento foi reformulado como uma **camada
-  de tradução/interoperabilidade**: uma tabela mapeando cada conceito OCPP
-  (`StartTransaction`, `meterStop`, `StatusNotification.errorCode` etc.) para o
-  registrador Modbus real equivalente — cobrindo o requisito de OCPP do
-  desafio sem afirmar que o hardware suporta um protocolo que ele não suporta.
-- **`politica_tarifaria.md`** — a única base explicitamente **ilustrativa**
-  (postos tarifários, tarifa de frota, descontos): não existe uma tarifa
-  pública da GoodWe para isso, então o documento diz isso abertamente, embora
-  aponte que o carregador real já expõe um registrador de valor monetário
-  (`10061`, "Charge amount"), o que torna a ideia compatível com o hardware.
-
-As duas primeiras bases foram reescritas depois de receber a documentação
-oficial da GoodWe (datasheet, manual e mapa Modbus) — a primeira versão usava
-códigos de erro plausíveis mas não confirmados, corrigidos para os dados reais
-do equipamento.
-
-Arquitetura (`src/rag/indexer.py` + `src/chain/builder.py`): os `.md` são divididos
-em chunks **por seção** (nunca fundindo seções vizinhas — ver decisão no relatório,
-Problema 4), embarcados com FastEmbed (`paraphrase-multilingual-MiniLM-L12-v2`,
-roda em CPU, sem API key) e indexados em FAISS (`data/faiss_index/`). A cada
-pergunta, a chain LCEL recupera os `k=6` chunks mais relevantes e os injeta no
-prompt como `<base_de_conhecimento>` (`system_prompt_v6.md`), com instrução
-explícita para o modelo tratar esse conteúdo como fonte de verdade — sem essa
-instrução, testamos e o modelo **ignorava** a política recuperada (ver Problema 4
-do relatório). As fontes usadas em cada resposta aparecem na UI (📚) e em
-`RespostaChat.fontes_rag`.
-
-## Domínio do chatbot
-
-Persona: Gestor de Operações de eletropostos GoodWe. O assistente **faz**: validação
-de aumento de potência contra o limite da rede, cálculo de faturamento com
-tarifação dinâmica (kWh × tarifa do posto horário, via RAG), registro do ciclo da
-sessão com base em dados de OCPP, tradução de erros técnicos (OCPP e Modbus/RS485,
-via RAG) e sugestão de Load Balancing. **Não faz, mas orienta a quem procurar**
-(`<limites_de_atuacao>` no prompt): manutenção física do hardware, processamento
-real de pagamento e decisões de segurança elétrica que dependam de inspeção
-física — nesses casos, o assistente indica o profissional habilitado a acionar em
-vez de recusar genericamente ou tentar resolver sozinho.
+- `ConversationSummaryBufferMemory` por sessão (`src/chain/memoria.py`): resume a parte
+  mais antiga da conversa quando o histórico passa de `MEMORIA_LIMITE_TOKENS`.
+- Saída estruturada `ConsultaRecarga` (Pydantic v2), agora com `fontes_citadas` (ids dos
+  trechos usados) e `fora_da_base`.
+- Guardrails de escopo e jailbreak rodam antes da chain, sem gastar chamada ao LLM.

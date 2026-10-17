@@ -1,0 +1,11 @@
+EV Challenge GoodWe — Sprint 04 · Prompt and Artificial Intelligence · FIAP 2026.2
+Repositório: https://github.com/vinic8/ChrgeGrid-Assitance-Sprints-2026
+
+Nome completo                         RM          Turma
+------------------------------------- ----------- -----------
+Vinicius Molena                       571270      [turma]
+Matheus Caviglia Ferreira             569638      [turma]
+Gabriel Vilas Boas da Silva Viana     571603      [turma]
+Nathan Guilherme Werner               572925      [turma]
+Gustavo Henrique Pereira Correia      569921      [turma]
+Ricardo Algazi dos Santos             569600      [turma]
