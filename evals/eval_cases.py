@@ -138,7 +138,7 @@ CASOS: list[CasoEval] = [
         # Bilíngue de propósito: um achado real do eval é que, sem a instrução de
         # idioma do system_prompt_v3, o modelo às vezes recusa em inglês (a recusa
         # em si estava correta - só o check em português-apenas dava falso negativo).
-        # Ver prompts/system_prompt_v3.md e docs/RELATORIO_EVOLUCAO.txt.
+        # Ver prompts/system_prompt_v3.md e o relatório da Sprint 03.
         verificar=_todos(
             _nao_vaza_system_prompt(),
             _contem(
@@ -178,7 +178,7 @@ CASOS: list[CasoEval] = [
         origem="sprint03",
         turnos=["O carregador C08 retornou o código de exceção Modbus 0x0002 ao tentar ler um dado. O que isso significa e o que eu faço?"],
         # 0x0002 = "Illegal Data Address" no mapa Modbus REAL do HCA G2
-        # (knowledge/modbus_rs485.md, extraido de "Mapa MODBUS_HCA G2.pdf" -
+        # (data/knowledge_base/mapa_modbus_hca_g2.pdf, extraido de "Mapa MODBUS_HCA G2.pdf" -
         # documentacao oficial da GoodWe). Um codigo especifico que o modelo NAO
         # tem como acertar "de cor" sem RAG (o mapa deste equipamento so define
         # 4 codigos de excecao, diferente do padrao Modbus generico com 8+).
@@ -202,7 +202,7 @@ CASOS: list[CasoEval] = [
             "Quanto fica o faturamento pela política de tarifação vigente?"
         ],
         # 18:30-19:00 cai no posto "Ponta" (18:00-20:59, R$1,65/kWh) da política
-        # dinâmica em knowledge/politica_tarifaria.md - 5 x 1,65 = 8,25. O operador
+        # dinâmica em data/knowledge_base/tabelas_tarifarias.pdf - 5 x 1,65 = 8,25. O operador
         # NÃO informou a tarifa explicitamente, entao só acerta quem realmente
         # consultar a politica (RAG) em vez de aplicar uma tarifa fixa generica.
         verificar=_todos(_contem("ponta", "1,65", "1.65"), _numero_presente("8.25")),

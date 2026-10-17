@@ -1,0 +1,791 @@
+{
+  "rotulo": "sprint03",
+  "provider": "ollama",
+  "modelo": "gemma4:cloud",
+  "descricao": "Sprint 03 (commit 244a814): FAISS + FastEmbed MiniLM, 4 docs .md, k=6, prompt v6, sem citação",
+  "gerado_em": "2026-10-17T15:07:53",
+  "config": {
+    "vector_store": "FAISS",
+    "embeddings": "paraphrase-multilingual-MiniLM-L12-v2",
+    "k": 6,
+    "chunking": "1 chunk por seção ##",
+    "prompt": "system_prompt_v6",
+    "temperature": 0.2,
+    "max_tokens": 600,
+    "base": "knowledge/*.md (4 documentos)"
+  },
+  "resumo": {
+    "faithfulness_ragas": 0.497,
+    "answer_relevancy_ragas": 0.655,
+    "faithfulness_rubrica": 0.847,
+    "answer_relevancy_rubrica": 0.722,
+    "hit_documento_pct": 66.7,
+    "citacao_presente_pct": 0.0,
+    "citacao_correta_pct": 0.0,
+    "acerto_factual_pct": 55.6,
+    "recusa_indevida_pct": 16.7,
+    "recusa_correta_pct": 66.7,
+    "latencia_media_s": 1.3,
+    "tokens_medios": 97.095,
+    "erros": []
+  },
+  "itens": [
+    {
+      "id": "R01",
+      "tipo": "respondivel",
+      "pergunta": "O carregador C11 fez uma recarga das 18:30 às 19:00, com consumo de 5 kWh. Quanto fica o faturamento pela política tarifária?",
+      "resposta": "Ciclo registrado no carregador C11. O período de recarga (18:30 às 19:00) enquadra-se integralmente no Posto de Ponta, com tarifa de R$ 1,65/kWh. Cálculo: 5 kWh × R$ 1,65 = R$ 8,25.",
+      "contextos": [
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Descontos e casos especiais\n\n- **Recarga fora de ponta acima de 4 horas contínuas**: desconto de 10% sobre\n  o total do ciclo (incentivo a uso em horário de baixa demanda).\n- **Veículos de frota cadastrada (ID começando com \"FROTA-\")**: tarifa fixa\n  preferencial de R$ 0,70/kWh independente do posto horário, conforme contrato\n  comercial — essa regra sobrepõe a tabela de postos tarifários.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Sobretaxa por excedente de demanda (Load Balancing negado)\n\nQuando uma solicitação de potência é **negada** por exceder o limite da rede\n(ver diretriz de Orquestração de Potência), não há faturamento de excedente —\na operação simplesmente não é autorizada. A sobretaxa de demanda só se aplica\na ciclos **já autorizados e concluídos** que, por telemetria (`MeterValues`\nvia OCPP), mostrarem picos de potência acima do contratado: nesse caso,\nsoma-se uma multa de 20% sobre o valor do ciclo inteiro, e o caso deve ser\nsinalizado para auditoria humana antes de cobrar — o assistente não fecha essa\ncobrança sozinho.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Postos tarifários (horário local, todos os dias)\n\n| Posto | Horário | Tarifa (R$/kWh) | Observação |\n|---|---|---|---|\n| Fora de ponta (madrugada) | 00:00–06:59 | R$ 0,55 | Tarifa mais baixa — incentiva recarga noturna |\n| Fora de ponta (dia) | 07:00–17:59 | R$ 0,75 | Tarifa padrão diurna |\n| **Ponta** | **18:00–20:59** | **R$ 1,65** | Horário de pico do sistema elétrico — tarifa mais alta |\n| Fora de ponta (noite) | 21:00–23:59 | R$ 0,75 | Retorno à tarifa padrão |\n\nSe o ciclo de recarga atravessar mais de um posto tarifário (ex.: início às\n17:30 e fim às 19:00), o faturamento deve ser proporcional ao tempo/consumo em\ncada posto — quando a conversa não trouxer dados suficientes para essa\nproporção (consumo por sub-período), o assistente deve pedir o consumo\nsegmentado em vez de aplicar uma tarifa única arbitrariamente.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n# Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n**Nota de proveniência**: esta política é **ilustrativa/fictícia**, elaborada\npara o projeto ChargeGrid — não é uma tarifa real publicada pela GoodWe. A\ndocumentação oficial do HCA G2 confirma que o carregador já expõe um valor\nmonetário calculado no próprio equipamento (registrador Modbus `10061`, \"Charge\namount\", disponível em modo de operação — ver `knowledge/modbus_rs485.md`),\no que mostra que aplicar uma política de tarifação sobre os dados do\ncarregador é compatível com o hardware real; os valores e regras abaixo, porém,\nforam definidos para este projeto, não extraídos de um documento comercial da\nGoodWe.\n\nEsta política substitui a tarifa fixa única por uma estrutura de **postos\ntarifários horários** (time-of-use), refletindo o custo real da energia ao\nlongo do dia — o mesmo princípo das tarifas branca/verde do setor elétrico\nbrasileiro, adaptado para o eletroposto comercial.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Relação com o ChargeGrid Assistant\n\nAo calcular faturamento, o assistente deve: (1) identificar o horário do ciclo\n(se informado) e aplicar o posto tarifário correto desta tabela em vez de uma\ntarifa genérica; (2) aplicar a tarifa fixa de frota quando o ID do veículo\ncomeçar com \"FROTA-\"; (3) nunca aplicar a multa de excedente de demanda sem\nque o operador tenha informado explicitamente uma leitura de potência acima do\ncontratado; (4) se a tarifa não puder ser determinada com segurança pelos\ndados disponíveis, perguntar o horário do ciclo em vez de assumir um valor.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Load Balancing / Controle de Carga Dinâmico\n\nApós ativado, o carregador ajusta a velocidade de carregamento (ou pausa)\nconforme os dados do medidor e a corrente de conexão à rede configurada, para\nevitar o disparo do disjuntor principal — reiniciando automaticamente quando a\ndiferença entre a corrente contratada e a consumida permitir. É esse mecanismo\nque o ChargeGrid aciona ao negar uma solicitação de potência e sugerir\n\"reduzir X para liberar Y\"."
+      ],
+      "docs_recuperados": [
+        "tabelas_tarifarias",
+        "tabelas_tarifarias",
+        "tabelas_tarifarias",
+        "tabelas_tarifarias",
+        "tabelas_tarifarias",
+        "manual_produto_goodwe_hca_g2"
+      ],
+      "docs_citados": [],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 2.32,
+      "tokens": 109,
+      "ragas": {
+        "faithfulness": 0.5,
+        "answer_relevancy": 0.704718133015415
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta utiliza corretamente a tarifa de 'Ponta' (R$ 1,65/kWh) para o horário informado, realizando o cálculo aritmético exato com base nos trechos e na pergunta."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "R02",
+      "tipo": "respondivel",
+      "pergunta": "O veículo FROTA-07 carregou 20 kWh às 19h. Qual tarifa aplicar e quanto cobrar?",
+      "resposta": "Para o veículo FROTA-07, aplica-se a tarifa fixa preferencial de R$ 0,70/kWh destinada a veículos de frota cadastrada, a qual sobrepõe a tarifa de posto horário (Ponta). Cálculo: 20 kWh × R$ 0,70 = R$ 14,00.",
+      "contextos": [
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Descontos e casos especiais\n\n- **Recarga fora de ponta acima de 4 horas contínuas**: desconto de 10% sobre\n  o total do ciclo (incentivo a uso em horário de baixa demanda).\n- **Veículos de frota cadastrada (ID começando com \"FROTA-\")**: tarifa fixa\n  preferencial de R$ 0,70/kWh independente do posto horário, conforme contrato\n  comercial — essa regra sobrepõe a tabela de postos tarifários.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Sobretaxa por excedente de demanda (Load Balancing negado)\n\nQuando uma solicitação de potência é **negada** por exceder o limite da rede\n(ver diretriz de Orquestração de Potência), não há faturamento de excedente —\na operação simplesmente não é autorizada. A sobretaxa de demanda só se aplica\na ciclos **já autorizados e concluídos** que, por telemetria (`MeterValues`\nvia OCPP), mostrarem picos de potência acima do contratado: nesse caso,\nsoma-se uma multa de 20% sobre o valor do ciclo inteiro, e o caso deve ser\nsinalizado para auditoria humana antes de cobrar — o assistente não fecha essa\ncobrança sozinho.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Relação com o ChargeGrid Assistant\n\nAo calcular faturamento, o assistente deve: (1) identificar o horário do ciclo\n(se informado) e aplicar o posto tarifário correto desta tabela em vez de uma\ntarifa genérica; (2) aplicar a tarifa fixa de frota quando o ID do veículo\ncomeçar com \"FROTA-\"; (3) nunca aplicar a multa de excedente de demanda sem\nque o operador tenha informado explicitamente uma leitura de potência acima do\ncontratado; (4) se a tarifa não puder ser determinada com segurança pelos\ndados disponíveis, perguntar o horário do ciclo em vez de assumir um valor.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Postos tarifários (horário local, todos os dias)\n\n| Posto | Horário | Tarifa (R$/kWh) | Observação |\n|---|---|---|---|\n| Fora de ponta (madrugada) | 00:00–06:59 | R$ 0,55 | Tarifa mais baixa — incentiva recarga noturna |\n| Fora de ponta (dia) | 07:00–17:59 | R$ 0,75 | Tarifa padrão diurna |\n| **Ponta** | **18:00–20:59** | **R$ 1,65** | Horário de pico do sistema elétrico — tarifa mais alta |\n| Fora de ponta (noite) | 21:00–23:59 | R$ 0,75 | Retorno à tarifa padrão |\n\nSe o ciclo de recarga atravessar mais de um posto tarifário (ex.: início às\n17:30 e fim às 19:00), o faturamento deve ser proporcional ao tempo/consumo em\ncada posto — quando a conversa não trouxer dados suficientes para essa\nproporção (consumo por sub-período), o assistente deve pedir o consumo\nsegmentado em vez de aplicar uma tarifa única arbitrariamente.",
+        "Modbus RTU / RS485 — Referência Real (GoodWe HCA G2)\n\n## Registradores operacionais relevantes para orquestração e diagnóstico\n\n| Registrador | Nome | Uso |\n|---|---|---|\n| `10017` | Charging Station Status | 00 ocioso sem plugue · 01 ocioso com plugue · 02 handshake com veículo · 03 carregando · 04 carga completa · 05 alarme · 06 início agendado · 07 manutenção · 08 falha ao iniciar · 09 atualizando firmware · 10 interrompido (PV/bateria insuficiente) |\n| `10026` | Household/site circuit breaker rated current | Corrente nominal do disjuntor de entrada — é a fonte real do \"Limite da Rede\" usado na orquestração de potência, quando disponível via Modbus |\n| `10029` | Maximum Charging Power | Potência máxima configurada (4,2–22,0 kW conforme o modelo) |\n| `10039` | Maximum Grid Electricity Draw Power | Limite de potência de compra da rede (Grid Power Limit) — usado pelo Controle de Carga Dinâmico |\n| `10075` | Car connection status | 0 desconectado · 1 meia-conexão · 2 conectado |\n| `10084` | CP voltage state | Estado do sinal de Control Pilot (IEC 61851) entre carregador e veículo |",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n# Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n**Nota de proveniência**: esta política é **ilustrativa/fictícia**, elaborada\npara o projeto ChargeGrid — não é uma tarifa real publicada pela GoodWe. A\ndocumentação oficial do HCA G2 confirma que o carregador já expõe um valor\nmonetário calculado no próprio equipamento (registrador Modbus `10061`, \"Charge\namount\", disponível em modo de operação — ver `knowledge/modbus_rs485.md`),\no que mostra que aplicar uma política de tarifação sobre os dados do\ncarregador é compatível com o hardware real; os valores e regras abaixo, porém,\nforam definidos para este projeto, não extraídos de um documento comercial da\nGoodWe.\n\nEsta política substitui a tarifa fixa única por uma estrutura de **postos\ntarifários horários** (time-of-use), refletindo o custo real da energia ao\nlongo do dia — o mesmo princípo das tarifas branca/verde do setor elétrico\nbrasileiro, adaptado para o eletroposto comercial."
+      ],
+      "docs_recuperados": [
+        "tabelas_tarifarias",
+        "tabelas_tarifarias",
+        "tabelas_tarifarias",
+        "tabelas_tarifarias",
+        "mapa_modbus_hca_g2",
+        "tabelas_tarifarias"
+      ],
+      "docs_citados": [],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 1.54,
+      "tokens": 96,
+      "ragas": {
+        "faithfulness": 0.6666666666666666,
+        "answer_relevancy": 0.8206403397534556
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta aplicou corretamente a regra de tarifa fixa para IDs começando com 'FROTA-' (Trecho 1 e 3), que sobrepõe a tabela de horários (Trecho 4), e realizou o cálculo aritmético exato com base nos dados da pergunta."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "R03",
+      "tipo": "respondivel",
+      "pergunta": "No eletroposto comercial, a carga terminou às 14:00 e o motorista só tirou o carro às 14:45. Existe cobrança pela ocupação da vaga? Quanto?",
+      "resposta": "Não há previsão de cobrança por tempo de ocupação de vaga (idle fee) na política de tarifação dinâmica atual. O faturamento é baseado estritamente no consumo de energia (kWh) e nas regras de postos tarifários ou tarifas de frota. O período entre o fim da carga (14:00) e a retirada do veículo (14:45) não gera custos adicionais.",
+      "contextos": [
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Descontos e casos especiais\n\n- **Recarga fora de ponta acima de 4 horas contínuas**: desconto de 10% sobre\n  o total do ciclo (incentivo a uso em horário de baixa demanda).\n- **Veículos de frota cadastrada (ID começando com \"FROTA-\")**: tarifa fixa\n  preferencial de R$ 0,70/kWh independente do posto horário, conforme contrato\n  comercial — essa regra sobrepõe a tabela de postos tarifários.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Sobretaxa por excedente de demanda (Load Balancing negado)\n\nQuando uma solicitação de potência é **negada** por exceder o limite da rede\n(ver diretriz de Orquestração de Potência), não há faturamento de excedente —\na operação simplesmente não é autorizada. A sobretaxa de demanda só se aplica\na ciclos **já autorizados e concluídos** que, por telemetria (`MeterValues`\nvia OCPP), mostrarem picos de potência acima do contratado: nesse caso,\nsoma-se uma multa de 20% sobre o valor do ciclo inteiro, e o caso deve ser\nsinalizado para auditoria humana antes de cobrar — o assistente não fecha essa\ncobrança sozinho.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Relação com o ChargeGrid Assistant\n\nAo calcular faturamento, o assistente deve: (1) identificar o horário do ciclo\n(se informado) e aplicar o posto tarifário correto desta tabela em vez de uma\ntarifa genérica; (2) aplicar a tarifa fixa de frota quando o ID do veículo\ncomeçar com \"FROTA-\"; (3) nunca aplicar a multa de excedente de demanda sem\nque o operador tenha informado explicitamente uma leitura de potência acima do\ncontratado; (4) se a tarifa não puder ser determinada com segurança pelos\ndados disponíveis, perguntar o horário do ciclo em vez de assumir um valor.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Load Balancing / Controle de Carga Dinâmico\n\nApós ativado, o carregador ajusta a velocidade de carregamento (ou pausa)\nconforme os dados do medidor e a corrente de conexão à rede configurada, para\nevitar o disparo do disjuntor principal — reiniciando automaticamente quando a\ndiferença entre a corrente contratada e a consumida permitir. É esse mecanismo\nque o ChargeGrid aciona ao negar uma solicitação de potência e sugerir\n\"reduzir X para liberar Y\".",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n# Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n**Nota de proveniência**: esta política é **ilustrativa/fictícia**, elaborada\npara o projeto ChargeGrid — não é uma tarifa real publicada pela GoodWe. A\ndocumentação oficial do HCA G2 confirma que o carregador já expõe um valor\nmonetário calculado no próprio equipamento (registrador Modbus `10061`, \"Charge\namount\", disponível em modo de operação — ver `knowledge/modbus_rs485.md`),\no que mostra que aplicar uma política de tarifação sobre os dados do\ncarregador é compatível com o hardware real; os valores e regras abaixo, porém,\nforam definidos para este projeto, não extraídos de um documento comercial da\nGoodWe.\n\nEsta política substitui a tarifa fixa única por uma estrutura de **postos\ntarifários horários** (time-of-use), refletindo o custo real da energia ao\nlongo do dia — o mesmo princípo das tarifas branca/verde do setor elétrico\nbrasileiro, adaptado para o eletroposto comercial.",
+        "Modbus RTU / RS485 — Referência Real (GoodWe HCA G2)\n\n## Registradores operacionais relevantes para orquestração e diagnóstico\n\n| Registrador | Nome | Uso |\n|---|---|---|\n| `10017` | Charging Station Status | 00 ocioso sem plugue · 01 ocioso com plugue · 02 handshake com veículo · 03 carregando · 04 carga completa · 05 alarme · 06 início agendado · 07 manutenção · 08 falha ao iniciar · 09 atualizando firmware · 10 interrompido (PV/bateria insuficiente) |\n| `10026` | Household/site circuit breaker rated current | Corrente nominal do disjuntor de entrada — é a fonte real do \"Limite da Rede\" usado na orquestração de potência, quando disponível via Modbus |\n| `10029` | Maximum Charging Power | Potência máxima configurada (4,2–22,0 kW conforme o modelo) |\n| `10039` | Maximum Grid Electricity Draw Power | Limite de potência de compra da rede (Grid Power Limit) — usado pelo Controle de Carga Dinâmico |\n| `10075` | Car connection status | 0 desconectado · 1 meia-conexão · 2 conectado |\n| `10084` | CP voltage state | Estado do sinal de Control Pilot (IEC 61851) entre carregador e veículo |"
+      ],
+      "docs_recuperados": [
+        "tabelas_tarifarias",
+        "tabelas_tarifarias",
+        "tabelas_tarifarias",
+        "manual_produto_goodwe_hca_g2",
+        "tabelas_tarifarias",
+        "mapa_modbus_hca_g2"
+      ],
+      "docs_citados": [],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 1.3,
+      "tokens": 117,
+      "ragas": {
+        "faithfulness": 0.3333333333333333,
+        "answer_relevancy": 0.7296421880372556
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta afirma corretamente que não há previsão de cobrança por ocupação nos trechos fornecidos e responde diretamente à pergunta."
+      },
+      "acerto_factual": false,
+      "recusou": false
+    },
+    {
+      "id": "R04",
+      "tipo": "respondivel",
+      "pergunta": "O carregador C08 retornou o código de exceção Modbus 0x0002 ao tentar ler um dado. O que isso significa e o que eu faço?",
+      "resposta": "O código de exceção Modbus 0x0002 indica 'Illegal Data Address'. Isso significa que o controlador tentou acessar um endereço de registrador inválido ou que não é suportado pelo modelo HCA G2. A ação imediata é conferir o endereço solicitado contra o mapa de registradores oficial do HCA G2, garantindo que a leitura esteja dentro das faixas válidas (registradores 10000+, 10500+, 20000+ ou 30000+).",
+      "contextos": [
+        "Modbus RTU / RS485 — Referência Real (GoodWe HCA G2)\n\n## Códigos de FALHA do carregador (registradores 10001–10008, \"AC Fault Bytes\")\n\nDiferente dos códigos de exceção acima, estes são bits de status lidos via Modbus\nque indicam falhas reais do equipamento — é o que efetivamente aparece quando o\noperador pergunta \"por que o carregador parou\" ou \"o que esse alarme significa\".\n\n**Registrador 10001 (AC Fault Bytes 01)** — bit a bit:\n`bit0` parada de emergência acionada · `bit1` sobretensão · `bit2` sobrecorrente ·\n`bit3` subtensão · `bit4` falha no conector · `bit5` S2 desconectado ·\n`bit6` sobretemperatura ambiente · `bit7` sobretemperatura do plugue de carga\n\n**Registrador 10002 (AC Fault Bytes 02)**:\n`bit0` falha de controle de acesso · **`bit1` falha de aterramento (grounding fault)** ·\n`bit2` timeout de handshake com o veículo · `bit3` falha de comunicação com cartão RF ·\n`bit4` falha de comunicação com display serial · `bit5` falha de comunicação com o\nmedidor embarcado · `bit6` falha no relé de saída · `bit7` falha na trava do plugue\n\n**Registrador 10003 (AC Fault Bytes 03)**:\n`bit0` curto-circuito na saída · `bit1` falha de corrente de fuga ·\n`bit2` pausa de carregamento por mais de 10 min · `bit3` leitura anômala do medidor ·\n`bit4` carregador offline ao iniciar carga por PV/bateria · `bit5` potência\ninsuficiente ao iniciar carga por PV/bateria",
+        "Modbus RTU / RS485 — Referência Real (GoodWe HCA G2)\n\n## Relação com o ChargeGrid Assistant\n\nQuando o operador reportar um código de exceção Modbus (0x0001–0x0004), use a\ntabela de exceções acima. Quando reportar um comportamento do carregador (não\nresponde, parou, alarme), mapeie para os bits de falha dos registradores\n10001–10008 quando o sintoma bater, e siga o checklist de diagnóstico físico.\nNunca invente um código de exceção ou de falha que não esteja nesta tabela —\nse o operador citar um código fora do mapa (ex.: um código de 2 dígitos como\n\"0B\"), informe que esse código não consta no mapa Modbus do HCA G2 e peça para\nconfirmar o valor reportado pelo equipamento.",
+        "Modbus RTU / RS485 — Referência Real (GoodWe HCA G2)\n\n## Códigos de exceção Modbus (nível de protocolo)\n\nEstes são erros de PROTOCOLO (a requisição Modbus em si é inválida) — diferentes\ndos códigos de FALHA do equipamento (ver seção seguinte). O mapa oficial do HCA\nG2 define apenas 4 códigos de exceção:\n\n| Código | Nome | Causa provável | Ação imediata |\n|---|---|---|---|\n| `0x0001` | Illegal Function | O controlador pediu uma função Modbus que o carregador não suporta (ex.: firmware desatualizado) | Verificar versão de firmware do carregador |\n| `0x0002` | Illegal Data Address | Endereço de registrador Modbus inválido ou fora do mapa suportado por este modelo | Conferir o endereço contra o mapa de registradores do HCA G2 (registradores válidos: 10000+, 10500+, 20000+, 30000+) |\n| `0x0003` | Illegal Data Value | Valor fora da faixa aceita pelo registrador (ex.: potência de carregamento acima do limite do hardware) | Reduzir o valor ao intervalo permitido (ex.: 4,2–22,0 kW para `Maximum Charging Power`) |\n| `0x0004` | Slave Device Failure | Falha interna no carregador ao processar o comando | Reiniciar o carregador; se persistir, abrir chamado técnico |",
+        "Modbus RTU / RS485 — Referência Real (GoodWe HCA G2)\n\n## Checklist de diagnóstico físico (RS485)\n\n1. **Conexão do cabo**: verificar se os fios A/B não estão invertidos entre os\n   dispositivos — causa comum de falha de comunicação com inversor/medidor.\n2. **Endereço Modbus duplicado**: dois dispositivos com o mesmo endereço no\n   mesmo barramento causam colisão e leituras corrompidas.\n3. **Falha de aterramento (registrador 10002, bit1)**: interromper a operação\n   e acionar eletricista/técnico habilitado antes de religar — ver\n   `<limites_de_atuacao>` no system prompt, não é uma falha que se resolve à\n   distância.\n4. **Reinício da sessão Modbus**: reiniciar o driver/gateway Modbus sem\n   desligar o carregador inteiro resolve a maioria dos travamentos de\n   comunicação.\n5. **Power-cycle do carregador**: último recurso antes de abrir chamado\n   técnico.",
+        "Modbus RTU / RS485 — Referência Real (GoodWe HCA G2)\n\n# Modbus RTU / RS485 — Referência Real (GoodWe HCA G2)\n\nFonte: \"Mapa MODBUS_HCA G2.pdf\" (protocolo Modbus da 2ª geração do carregador CA\nGoodWe, v1.0.15) e \"GW_HCA-G2_Datasheet-PT.pdf\". Substitui uma versão anterior\ndesta base que usava códigos de exceção genéricos e não verificados — os dados\nabaixo vêm do documento oficial do fabricante.",
+        "OCPP — Camada de Interoperabilidade (não nativa do hardware GoodWe)\n\n## Relação com o ChargeGrid Assistant\n\nAo explicar um conceito de \"ciclo de sessão\" em termos operacionais, prefira\ncitar o registrador Modbus real (fonte de verdade, ver `modbus_rs485.md`) e, se\no operador perguntar especificamente em termos OCPP (ex.: \"o que é\nStopTransaction\"), use a tabela de mapeamento acima para traduzir — deixando\nclaro, se perguntado diretamente, que o carregador GoodWe HCA fala Modbus\nnativamente e o OCPP é a camada de interoperabilidade do ChargeGrid."
+      ],
+      "docs_recuperados": [
+        "mapa_modbus_hca_g2",
+        "mapa_modbus_hca_g2",
+        "mapa_modbus_hca_g2",
+        "mapa_modbus_hca_g2",
+        "mapa_modbus_hca_g2",
+        "interoperabilidade_ocpp"
+      ],
+      "docs_citados": [],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 1.48,
+      "tokens": 134,
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.7625629515484529
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta extraiu com precisão o significado e a ação imediata para o código 0x0002 conforme descrito no Trecho [3]."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "R05",
+      "tipo": "respondivel",
+      "pergunta": "Em qual registrador e bit aparece a falha de aterramento do HCA G2, e qual a conduta?",
+      "resposta": "A falha de aterramento (Ground Failure) é reportada via bits de falha nos registradores Modbus 10001 a 10008. Diante deste erro, a conduta obrigatória é a interrupção imediata da operação do eletroposto. Por se tratar de um risco crítico de segurança elétrica, é necessário acionar um eletricista ou técnico habilitado para inspeção física e correção do aterramento antes de qualquer tentativa de religamento do equipamento.",
+      "contextos": [
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n# EV Charger GoodWe HCA G2 — Especificações Reais\n\nFonte: \"GW_HCA-G2_Datasheet-PT.pdf\" e \"GW_HCA-G2_User-Manual-PT.pdf\" (fabricante,\n2025). Substitui uma versão anterior desta base que estimava valores plausíveis\nsem confirmação — os dados abaixo são do datasheet oficial.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Load Balancing / Controle de Carga Dinâmico\n\nApós ativado, o carregador ajusta a velocidade de carregamento (ou pausa)\nconforme os dados do medidor e a corrente de conexão à rede configurada, para\nevitar o disparo do disjuntor principal — reiniciando automaticamente quando a\ndiferença entre a corrente contratada e a consumida permitir. É esse mecanismo\nque o ChargeGrid aciona ao negar uma solicitação de potência e sugerir\n\"reduzir X para liberar Y\".",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Comunicação e protocolos\n\n- **Protocolo de comunicação declarado no datasheet: Modbus TCP.**\n- Portas físicas: Bluetooth, Wi-Fi, RS485 (×2 — uma para inversor, outra para\n  medidor MID), LAN (para o roteador/nuvem SEMS).\n- **Nota importante sobre OCPP**: o datasheet e o manual do HCA G2 NÃO mencionam\n  OCPP em nenhum momento — o ecossistema nativo da GoodWe é RS485/Modbus (local,\n  com inversor e medidor MID) + Modbus TCP/nuvem SEMS (com o app SolarGo/SEMS\n  Portal). O desafio ChargeGrid Intelligence pede explicitamente cobertura de\n  OCPP e Modbus; como o hardware real não fala OCPP nativamente, o ChargeGrid\n  trata OCPP como uma camada de **tradução/interoperabilidade** que expõe os\n  dados reais do Modbus (status, sessão, falhas) em vocabulário OCPP para\n  integração com sistemas de gestão de frota/CSMS de terceiros — ver\n  `knowledge/ocpp.md` para o mapeamento exato.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Proteções elétricas (integradas)\n\nCorrente residual (RCD) 30 mA CA + 6 mA CC · sobrecorrente · sobretensão ·\nsubtensão · falha de aterramento · surto CA (SPD Tipo III) · sobretemperatura ·\ndesligamento de emergência (botão físico). Um **RCD/RCBO externo tipo A** ainda é\nexigido na instalação (o carregador não substitui a proteção de circuito).",
+        "Modbus RTU / RS485 — Referência Real (GoodWe HCA G2)\n\n## Registradores operacionais relevantes para orquestração e diagnóstico\n\n| Registrador | Nome | Uso |\n|---|---|---|\n| `10017` | Charging Station Status | 00 ocioso sem plugue · 01 ocioso com plugue · 02 handshake com veículo · 03 carregando · 04 carga completa · 05 alarme · 06 início agendado · 07 manutenção · 08 falha ao iniciar · 09 atualizando firmware · 10 interrompido (PV/bateria insuficiente) |\n| `10026` | Household/site circuit breaker rated current | Corrente nominal do disjuntor de entrada — é a fonte real do \"Limite da Rede\" usado na orquestração de potência, quando disponível via Modbus |\n| `10029` | Maximum Charging Power | Potência máxima configurada (4,2–22,0 kW conforme o modelo) |\n| `10039` | Maximum Grid Electricity Draw Power | Limite de potência de compra da rede (Grid Power Limit) — usado pelo Controle de Carga Dinâmico |\n| `10075` | Car connection status | 0 desconectado · 1 meia-conexão · 2 conectado |\n| `10084` | CP voltage state | Estado do sinal de Control Pilot (IEC 61851) entre carregador e veículo |",
+        "OCPP — Camada de Interoperabilidade (não nativa do hardware GoodWe)\n\n## Mapeamento: conceito OCPP → registrador Modbus real do HCA G2\n\n| Conceito OCPP 1.6 | Dado Modbus GoodWe equivalente |\n|---|---|\n| `StatusNotification` (estado do conector) | Registrador `10017` (Charging Station Status: idle/handshake/charging/completed/alarm/...) |\n| `StatusNotification.errorCode` | Bits de falha dos registradores `10001-10008` (ver `knowledge/modbus_rs485.md`) |\n| `StartTransaction` / `meterStart` | Início do ciclo — registrador `10170` (Meter Reading Before Charging, em 0,01 kWh) e `10158-10160` (Charging Start Time) |\n| `StopTransaction` / `meterStop` | Fim do ciclo — registrador `10172` (Meter Reading After Charging, em 0,01 kWh) e `10162-10164` (Charging End Time); `meterStop - meterStart` = consumo do ciclo |\n| `StopTransaction.reason` | Registrador `10168` (Reason for Charging Termination — códigos detalhados no Apêndice 2 do protocolo GoodWe carregador↔servidor, não replicado aqui) |\n| `MeterValues` (leituras intermediárias) | Registradores `10015` (Charging power) e `10016` (Charging Capacity, consumo do ciclo em andamento) |\n| `Authorize` | Registrador `10076` (Charge starting mode: cartão RFID, app, VIN, plug-and-charge etc.) |\n| Valor a faturar do ciclo | Registrador `10061` (Charge amount, disponível em \"modo de operação\" — o próprio carregador já calcula um valor monetário internamente, na configuração vigente do equipamento) |"
+      ],
+      "docs_recuperados": [
+        "manual_produto_goodwe_hca_g2",
+        "manual_produto_goodwe_hca_g2",
+        "manual_produto_goodwe_hca_g2",
+        "manual_produto_goodwe_hca_g2",
+        "mapa_modbus_hca_g2",
+        "interoperabilidade_ocpp"
+      ],
+      "docs_citados": [],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 1.31,
+      "tokens": 122,
+      "ragas": {
+        "faithfulness": 0.25,
+        "answer_relevancy": 0.6436994442654939
+      },
+      "rubrica": {
+        "faithfulness": 0.25,
+        "answer_relevancy": 0.5,
+        "motivo": "A resposta indica corretamente o intervalo de registradores (10001-10008) com base no trecho [6], mas inventa o bit específico e toda a conduta técnica, que não constam nos trechos fornecidos."
+      },
+      "acerto_factual": false,
+      "recusou": false
+    },
+    {
+      "id": "R06",
+      "tipo": "respondivel",
+      "pergunta": "Quais são os parâmetros de comunicação serial RS485 do carregador HCA G2?",
+      "resposta": "Os parâmetros de comunicação serial RS485 para o carregador GoodWe HCA G2 são: Baud rate de 9600, 8 bits de dados, 1 bit de parada e sem paridade (N).",
+      "contextos": [
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Comunicação e protocolos\n\n- **Protocolo de comunicação declarado no datasheet: Modbus TCP.**\n- Portas físicas: Bluetooth, Wi-Fi, RS485 (×2 — uma para inversor, outra para\n  medidor MID), LAN (para o roteador/nuvem SEMS).\n- **Nota importante sobre OCPP**: o datasheet e o manual do HCA G2 NÃO mencionam\n  OCPP em nenhum momento — o ecossistema nativo da GoodWe é RS485/Modbus (local,\n  com inversor e medidor MID) + Modbus TCP/nuvem SEMS (com o app SolarGo/SEMS\n  Portal). O desafio ChargeGrid Intelligence pede explicitamente cobertura de\n  OCPP e Modbus; como o hardware real não fala OCPP nativamente, o ChargeGrid\n  trata OCPP como uma camada de **tradução/interoperabilidade** que expõe os\n  dados reais do Modbus (status, sessão, falhas) em vocabulário OCPP para\n  integração com sistemas de gestão de frota/CSMS de terceiros — ver\n  `knowledge/ocpp.md` para o mapeamento exato.",
+        "Modbus RTU / RS485 — Referência Real (GoodWe HCA G2)\n\n## Formato de comunicação serial (RS485)\n\n| Parâmetro | Valor |\n|---|---|\n| Baud rate | 9600 |\n| Bits de dados | 8 |\n| Bits de parada | 1 |\n| Paridade | N (nenhuma) |",
+        "Modbus RTU / RS485 — Referência Real (GoodWe HCA G2)\n\n## Checklist de diagnóstico físico (RS485)\n\n1. **Conexão do cabo**: verificar se os fios A/B não estão invertidos entre os\n   dispositivos — causa comum de falha de comunicação com inversor/medidor.\n2. **Endereço Modbus duplicado**: dois dispositivos com o mesmo endereço no\n   mesmo barramento causam colisão e leituras corrompidas.\n3. **Falha de aterramento (registrador 10002, bit1)**: interromper a operação\n   e acionar eletricista/técnico habilitado antes de religar — ver\n   `<limites_de_atuacao>` no system prompt, não é uma falha que se resolve à\n   distância.\n4. **Reinício da sessão Modbus**: reiniciar o driver/gateway Modbus sem\n   desligar o carregador inteiro resolve a maioria dos travamentos de\n   comunicação.\n5. **Power-cycle do carregador**: último recurso antes de abrir chamado\n   técnico.",
+        "Modbus RTU / RS485 — Referência Real (GoodWe HCA G2)\n\n## Registradores operacionais relevantes para orquestração e diagnóstico\n\n| Registrador | Nome | Uso |\n|---|---|---|\n| `10017` | Charging Station Status | 00 ocioso sem plugue · 01 ocioso com plugue · 02 handshake com veículo · 03 carregando · 04 carga completa · 05 alarme · 06 início agendado · 07 manutenção · 08 falha ao iniciar · 09 atualizando firmware · 10 interrompido (PV/bateria insuficiente) |\n| `10026` | Household/site circuit breaker rated current | Corrente nominal do disjuntor de entrada — é a fonte real do \"Limite da Rede\" usado na orquestração de potência, quando disponível via Modbus |\n| `10029` | Maximum Charging Power | Potência máxima configurada (4,2–22,0 kW conforme o modelo) |\n| `10039` | Maximum Grid Electricity Draw Power | Limite de potência de compra da rede (Grid Power Limit) — usado pelo Controle de Carga Dinâmico |\n| `10075` | Car connection status | 0 desconectado · 1 meia-conexão · 2 conectado |\n| `10084` | CP voltage state | Estado do sinal de Control Pilot (IEC 61851) entre carregador e veículo |",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Limite de rede / disjuntor de entrada\n\nO datasheet não especifica um \"limite de rede padrão\" fixo — isso é configurado\npor instalação, no registrador Modbus `Household Circuit Breaker Rated Current`\n(10026) e no parâmetro `Grid Power Limit` (10039, faixa 4,2–22,0 kW conforme o\nmodelo). Cada eletroposto GoodWe real tem seu próprio limite contratado/instalado\n— o ChargeGrid **nunca assume um valor padrão fixo entre instalações**: usa\nsempre o limite informado pelo operador na conversa para aquele site específico\nou, quando disponível, a leitura em tempo real desses registradores Modbus do\nequipamento em questão. Se nenhum dos dois estiver disponível, o assistente pede\no limite de rede daquele eletroposto em vez de presumir um número.",
+        "Modbus RTU / RS485 — Referência Real (GoodWe HCA G2)\n\n# Modbus RTU / RS485 — Referência Real (GoodWe HCA G2)\n\nFonte: \"Mapa MODBUS_HCA G2.pdf\" (protocolo Modbus da 2ª geração do carregador CA\nGoodWe, v1.0.15) e \"GW_HCA-G2_Datasheet-PT.pdf\". Substitui uma versão anterior\ndesta base que usava códigos de exceção genéricos e não verificados — os dados\nabaixo vêm do documento oficial do fabricante."
+      ],
+      "docs_recuperados": [
+        "manual_produto_goodwe_hca_g2",
+        "mapa_modbus_hca_g2",
+        "mapa_modbus_hca_g2",
+        "mapa_modbus_hca_g2",
+        "manual_produto_goodwe_hca_g2",
+        "mapa_modbus_hca_g2"
+      ],
+      "docs_citados": [],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 1.05,
+      "tokens": 62,
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.9085262086286897
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta extrai com precisão e completude os parâmetros de comunicação serial contidos na tabela do trecho [2]."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "R07",
+      "tipo": "respondivel",
+      "pergunta": "O que a mensagem StopTransaction do OCPP registra e como isso vira consumo para faturamento?",
+      "resposta": "A mensagem StopTransaction do OCPP registra o encerramento de uma sessão de recarga, reportando o timestamp final e o valor do medidor (meter stop) no momento da desconexão. Para o faturamento, o consumo é calculado pela diferença entre o valor do medidor no StopTransaction e o valor registrado no StartTransaction (ou no último MeterValue). No ecossistema GoodWe, enquanto o OCPP atua como a camada de interoperabilidade para o CSMS, a fonte de verdade técnica reside nos registradores Modbus do hardware, que fornecem a energia acumulada para a composição do ciclo de faturamento.",
+      "contextos": [
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Sobretaxa por excedente de demanda (Load Balancing negado)\n\nQuando uma solicitação de potência é **negada** por exceder o limite da rede\n(ver diretriz de Orquestração de Potência), não há faturamento de excedente —\na operação simplesmente não é autorizada. A sobretaxa de demanda só se aplica\na ciclos **já autorizados e concluídos** que, por telemetria (`MeterValues`\nvia OCPP), mostrarem picos de potência acima do contratado: nesse caso,\nsoma-se uma multa de 20% sobre o valor do ciclo inteiro, e o caso deve ser\nsinalizado para auditoria humana antes de cobrar — o assistente não fecha essa\ncobrança sozinho.",
+        "OCPP — Camada de Interoperabilidade (não nativa do hardware GoodWe)\n\n## Relação com o ChargeGrid Assistant\n\nAo explicar um conceito de \"ciclo de sessão\" em termos operacionais, prefira\ncitar o registrador Modbus real (fonte de verdade, ver `modbus_rs485.md`) e, se\no operador perguntar especificamente em termos OCPP (ex.: \"o que é\nStopTransaction\"), use a tabela de mapeamento acima para traduzir — deixando\nclaro, se perguntado diretamente, que o carregador GoodWe HCA fala Modbus\nnativamente e o OCPP é a camada de interoperabilidade do ChargeGrid.",
+        "OCPP — Camada de Interoperabilidade (não nativa do hardware GoodWe)\n\n## Por que manter essa camada conceitual\n\n- O enunciado do desafio pede cobertura de OCPP explicitamente — remover essa\n  referência deixaria uma lacuna frente ao Bloco A/C da rubrica.\n- Ambientes reais de gestão de frota multi-fabricante frequentemente precisam\n  dessa tradução: nem todo carregador da frota é GoodWe, e um CSMS central\n  tipicamente fala OCPP com o \"mundo exterior\" enquanto lida com protocolos\n  proprietários (como o Modbus da GoodWe) internamente.\n- Ser transparente sobre isso evita o assistente \"inventar\" que o hardware\n  suporta um protocolo que a documentação oficial não confirma.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Descontos e casos especiais\n\n- **Recarga fora de ponta acima de 4 horas contínuas**: desconto de 10% sobre\n  o total do ciclo (incentivo a uso em horário de baixa demanda).\n- **Veículos de frota cadastrada (ID começando com \"FROTA-\")**: tarifa fixa\n  preferencial de R$ 0,70/kWh independente do posto horário, conforme contrato\n  comercial — essa regra sobrepõe a tabela de postos tarifários.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n# Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n**Nota de proveniência**: esta política é **ilustrativa/fictícia**, elaborada\npara o projeto ChargeGrid — não é uma tarifa real publicada pela GoodWe. A\ndocumentação oficial do HCA G2 confirma que o carregador já expõe um valor\nmonetário calculado no próprio equipamento (registrador Modbus `10061`, \"Charge\namount\", disponível em modo de operação — ver `knowledge/modbus_rs485.md`),\no que mostra que aplicar uma política de tarifação sobre os dados do\ncarregador é compatível com o hardware real; os valores e regras abaixo, porém,\nforam definidos para este projeto, não extraídos de um documento comercial da\nGoodWe.\n\nEsta política substitui a tarifa fixa única por uma estrutura de **postos\ntarifários horários** (time-of-use), refletindo o custo real da energia ao\nlongo do dia — o mesmo princípo das tarifas branca/verde do setor elétrico\nbrasileiro, adaptado para o eletroposto comercial.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Relação com o ChargeGrid Assistant\n\nAo calcular faturamento, o assistente deve: (1) identificar o horário do ciclo\n(se informado) e aplicar o posto tarifário correto desta tabela em vez de uma\ntarifa genérica; (2) aplicar a tarifa fixa de frota quando o ID do veículo\ncomeçar com \"FROTA-\"; (3) nunca aplicar a multa de excedente de demanda sem\nque o operador tenha informado explicitamente uma leitura de potência acima do\ncontratado; (4) se a tarifa não puder ser determinada com segurança pelos\ndados disponíveis, perguntar o horário do ciclo em vez de assumir um valor."
+      ],
+      "docs_recuperados": [
+        "tabelas_tarifarias",
+        "interoperabilidade_ocpp",
+        "interoperabilidade_ocpp",
+        "tabelas_tarifarias",
+        "tabelas_tarifarias",
+        "tabelas_tarifarias"
+      ],
+      "docs_citados": [],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 1.45,
+      "tokens": 147,
+      "ragas": {
+        "faithfulness": 0.5,
+        "answer_relevancy": 0.8153910074164751
+      },
+      "rubrica": {
+        "faithfulness": 0.25,
+        "answer_relevancy": 0.5,
+        "motivo": "A resposta inventa a função técnica da mensagem StopTransaction e a lógica de cálculo de consumo (diferença entre Start e Stop), informações que não constam nos trechos fornecidos."
+      },
+      "acerto_factual": false,
+      "recusou": false
+    },
+    {
+      "id": "R08",
+      "tipo": "respondivel",
+      "pergunta": "Um ciclo teve meterStart = 204500 e meterStop = 207250 nos registradores do HCA G2. Qual foi o consumo em kWh?",
+      "resposta": "O consumo foi calculado com base na diferença entre os registradores de energia do HCA G2: 207.250 (meterStop) - 204.500 (meterStart) = 2.750 kWh.",
+      "contextos": [
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Sobretaxa por excedente de demanda (Load Balancing negado)\n\nQuando uma solicitação de potência é **negada** por exceder o limite da rede\n(ver diretriz de Orquestração de Potência), não há faturamento de excedente —\na operação simplesmente não é autorizada. A sobretaxa de demanda só se aplica\na ciclos **já autorizados e concluídos** que, por telemetria (`MeterValues`\nvia OCPP), mostrarem picos de potência acima do contratado: nesse caso,\nsoma-se uma multa de 20% sobre o valor do ciclo inteiro, e o caso deve ser\nsinalizado para auditoria humana antes de cobrar — o assistente não fecha essa\ncobrança sozinho.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Limite de rede / disjuntor de entrada\n\nO datasheet não especifica um \"limite de rede padrão\" fixo — isso é configurado\npor instalação, no registrador Modbus `Household Circuit Breaker Rated Current`\n(10026) e no parâmetro `Grid Power Limit` (10039, faixa 4,2–22,0 kW conforme o\nmodelo). Cada eletroposto GoodWe real tem seu próprio limite contratado/instalado\n— o ChargeGrid **nunca assume um valor padrão fixo entre instalações**: usa\nsempre o limite informado pelo operador na conversa para aquele site específico\nou, quando disponível, a leitura em tempo real desses registradores Modbus do\nequipamento em questão. Se nenhum dos dois estiver disponível, o assistente pede\no limite de rede daquele eletroposto em vez de presumir um número.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Descontos e casos especiais\n\n- **Recarga fora de ponta acima de 4 horas contínuas**: desconto de 10% sobre\n  o total do ciclo (incentivo a uso em horário de baixa demanda).\n- **Veículos de frota cadastrada (ID começando com \"FROTA-\")**: tarifa fixa\n  preferencial de R$ 0,70/kWh independente do posto horário, conforme contrato\n  comercial — essa regra sobrepõe a tabela de postos tarifários.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n# EV Charger GoodWe HCA G2 — Especificações Reais\n\nFonte: \"GW_HCA-G2_Datasheet-PT.pdf\" e \"GW_HCA-G2_User-Manual-PT.pdf\" (fabricante,\n2025). Substitui uma versão anterior desta base que estimava valores plausíveis\nsem confirmação — os dados abaixo são do datasheet oficial.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n# Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n**Nota de proveniência**: esta política é **ilustrativa/fictícia**, elaborada\npara o projeto ChargeGrid — não é uma tarifa real publicada pela GoodWe. A\ndocumentação oficial do HCA G2 confirma que o carregador já expõe um valor\nmonetário calculado no próprio equipamento (registrador Modbus `10061`, \"Charge\namount\", disponível em modo de operação — ver `knowledge/modbus_rs485.md`),\no que mostra que aplicar uma política de tarifação sobre os dados do\ncarregador é compatível com o hardware real; os valores e regras abaixo, porém,\nforam definidos para este projeto, não extraídos de um documento comercial da\nGoodWe.\n\nEsta política substitui a tarifa fixa única por uma estrutura de **postos\ntarifários horários** (time-of-use), refletindo o custo real da energia ao\nlongo do dia — o mesmo princípo das tarifas branca/verde do setor elétrico\nbrasileiro, adaptado para o eletroposto comercial.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Postos tarifários (horário local, todos os dias)\n\n| Posto | Horário | Tarifa (R$/kWh) | Observação |\n|---|---|---|---|\n| Fora de ponta (madrugada) | 00:00–06:59 | R$ 0,55 | Tarifa mais baixa — incentiva recarga noturna |\n| Fora de ponta (dia) | 07:00–17:59 | R$ 0,75 | Tarifa padrão diurna |\n| **Ponta** | **18:00–20:59** | **R$ 1,65** | Horário de pico do sistema elétrico — tarifa mais alta |\n| Fora de ponta (noite) | 21:00–23:59 | R$ 0,75 | Retorno à tarifa padrão |\n\nSe o ciclo de recarga atravessar mais de um posto tarifário (ex.: início às\n17:30 e fim às 19:00), o faturamento deve ser proporcional ao tempo/consumo em\ncada posto — quando a conversa não trouxer dados suficientes para essa\nproporção (consumo por sub-período), o assistente deve pedir o consumo\nsegmentado em vez de aplicar uma tarifa única arbitrariamente."
+      ],
+      "docs_recuperados": [
+        "tabelas_tarifarias",
+        "manual_produto_goodwe_hca_g2",
+        "tabelas_tarifarias",
+        "manual_produto_goodwe_hca_g2",
+        "tabelas_tarifarias",
+        "tabelas_tarifarias"
+      ],
+      "docs_citados": [],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 1.12,
+      "tokens": 79,
+      "ragas": {
+        "faithfulness": 0.0,
+        "answer_relevancy": 0.7577116591615464
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta realiza corretamente o cálculo aritmético baseado nos valores fornecidos na pergunta, e os trechos confirmam que o equipamento HCA G2 possui registradores de medição."
+      },
+      "acerto_factual": false,
+      "recusou": false
+    },
+    {
+      "id": "R09",
+      "tipo": "respondivel",
+      "pergunta": "Quais modelos existem na linha GoodWe HCA G2 e qual a potência de cada um?",
+      "resposta": "A linha GoodWe HCA G2 é composta por três modelos com potências nominais distintas: o GW7K-HCA-20 (Monofásico, 7 kW), o GW11K-HCA-20 (Trifásico, 11 kW) e o GW22K-HCA-20 (Trifásico, 22 kW).",
+      "contextos": [
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Modelos da linha HCA G2\n\nA linha HCA G2 tem 3 modelos por potência nominal (não é um único modelo com\npotência ajustável em faixa livre):\n\n| Modelo | Fases | Potência nominal | Corrente nominal | Tensão de entrada |\n|---|---|---|---|---|\n| GW7K-HCA-20 | Monofásico | 7 kW | 32 A | 220 V (L/N/PE) |\n| GW11K-HCA-20 | Trifásico | 11 kW | 16 A | 380 V (3L/N/PE) |\n| GW22K-HCA-20 | Trifásico | 22 kW | 32 A | 380 V (3L/N/PE) |\n\nFaixa de ajuste de potência de carregamento (registrador Modbus `Maximum\nCharging Power`): 4,2 kW a 22,0 kW, respeitando o máximo do modelo instalado.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n# EV Charger GoodWe HCA G2 — Especificações Reais\n\nFonte: \"GW_HCA-G2_Datasheet-PT.pdf\" e \"GW_HCA-G2_User-Manual-PT.pdf\" (fabricante,\n2025). Substitui uma versão anterior desta base que estimava valores plausíveis\nsem confirmação — os dados abaixo são do datasheet oficial.",
+        "Modbus RTU / RS485 — Referência Real (GoodWe HCA G2)\n\n# Modbus RTU / RS485 — Referência Real (GoodWe HCA G2)\n\nFonte: \"Mapa MODBUS_HCA G2.pdf\" (protocolo Modbus da 2ª geração do carregador CA\nGoodWe, v1.0.15) e \"GW_HCA-G2_Datasheet-PT.pdf\". Substitui uma versão anterior\ndesta base que usava códigos de exceção genéricos e não verificados — os dados\nabaixo vêm do documento oficial do fabricante.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Load Balancing / Controle de Carga Dinâmico\n\nApós ativado, o carregador ajusta a velocidade de carregamento (ou pausa)\nconforme os dados do medidor e a corrente de conexão à rede configurada, para\nevitar o disparo do disjuntor principal — reiniciando automaticamente quando a\ndiferença entre a corrente contratada e a consumida permitir. É esse mecanismo\nque o ChargeGrid aciona ao negar uma solicitação de potência e sugerir\n\"reduzir X para liberar Y\".",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Comunicação e protocolos\n\n- **Protocolo de comunicação declarado no datasheet: Modbus TCP.**\n- Portas físicas: Bluetooth, Wi-Fi, RS485 (×2 — uma para inversor, outra para\n  medidor MID), LAN (para o roteador/nuvem SEMS).\n- **Nota importante sobre OCPP**: o datasheet e o manual do HCA G2 NÃO mencionam\n  OCPP em nenhum momento — o ecossistema nativo da GoodWe é RS485/Modbus (local,\n  com inversor e medidor MID) + Modbus TCP/nuvem SEMS (com o app SolarGo/SEMS\n  Portal). O desafio ChargeGrid Intelligence pede explicitamente cobertura de\n  OCPP e Modbus; como o hardware real não fala OCPP nativamente, o ChargeGrid\n  trata OCPP como uma camada de **tradução/interoperabilidade** que expõe os\n  dados reais do Modbus (status, sessão, falhas) em vocabulário OCPP para\n  integração com sistemas de gestão de frota/CSMS de terceiros — ver\n  `knowledge/ocpp.md` para o mapeamento exato.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Relação com o ChargeGrid Assistant\n\nAo orientar sobre limite de potência, cite o registrador `Household Circuit\nBreaker Rated Current`/`Grid Power Limit` como a fonte real do dado quando o\noperador mencionar leitura do equipamento; nunca aplique um valor de referência\nfixo entre instalações — cada eletroposto GoodWe real tem seu próprio limite de\nrede/disjuntor, que vem sempre da conversa (o operador informando o site em\nquestão) ou da leitura do equipamento daquele eletroposto específico."
+      ],
+      "docs_recuperados": [
+        "manual_produto_goodwe_hca_g2",
+        "manual_produto_goodwe_hca_g2",
+        "mapa_modbus_hca_g2",
+        "manual_produto_goodwe_hca_g2",
+        "manual_produto_goodwe_hca_g2",
+        "manual_produto_goodwe_hca_g2"
+      ],
+      "docs_citados": [],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 1.14,
+      "tokens": 98,
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.8878639322209941
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta identifica corretamente todos os modelos e suas respectivas potências nominais conforme a tabela presente no trecho [1]."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "R10",
+      "tipo": "respondivel",
+      "pergunta": "O carregador HCA G2 pode ficar instalado ao ar livre? Qual o grau de proteção?",
+      "resposta": "Sim, o carregador GoodWe HCA G2 pode ser instalado em ambientes externos (exterior). Ele possui grau de proteção IP66 para o corpo do carregador e IP55 para o plugue de carregamento.",
+      "contextos": [
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Proteções elétricas (integradas)\n\nCorrente residual (RCD) 30 mA CA + 6 mA CC · sobrecorrente · sobretensão ·\nsubtensão · falha de aterramento · surto CA (SPD Tipo III) · sobretemperatura ·\ndesligamento de emergência (botão físico). Um **RCD/RCBO externo tipo A** ainda é\nexigido na instalação (o carregador não substitui a proteção de circuito).",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Dados gerais\n\n| Item | Valor |\n|---|---|\n| Faixa de temperatura operacional | -30°C a +50°C (carregador); plugue até 50°C |\n| Umidade relativa | 5%–95%, sem condensação |\n| Altitude operacional máxima | 2000 m |\n| Grau de proteção | IP66 (carregador) / IP55 (plugue de carregamento) |\n| Conector | IEC Tipo 2 |\n| Cabo de saída | 6 m (7,5 m opcional) |\n| Ruído emitido | < 20 dB |\n| Consumo em espera | < 6,5 W |\n| Modos de partida | App (SolarGo/SEMS), cartão RFID, início automático ao conectar |\n| Modos de operação | Carregamento rápido, Prioridade solar, PV + bateria, agendamento, controle de carga dinâmico |\n| Instalação | Interior ou exterior, parede ou piso/poste |\n| Certificações | IEC61851-1, IEC62311, IEC62955, AS/NZS 4268:2017, IEC61008-1 |",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Load Balancing / Controle de Carga Dinâmico\n\nApós ativado, o carregador ajusta a velocidade de carregamento (ou pausa)\nconforme os dados do medidor e a corrente de conexão à rede configurada, para\nevitar o disparo do disjuntor principal — reiniciando automaticamente quando a\ndiferença entre a corrente contratada e a consumida permitir. É esse mecanismo\nque o ChargeGrid aciona ao negar uma solicitação de potência e sugerir\n\"reduzir X para liberar Y\".",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Modelos da linha HCA G2\n\nA linha HCA G2 tem 3 modelos por potência nominal (não é um único modelo com\npotência ajustável em faixa livre):\n\n| Modelo | Fases | Potência nominal | Corrente nominal | Tensão de entrada |\n|---|---|---|---|---|\n| GW7K-HCA-20 | Monofásico | 7 kW | 32 A | 220 V (L/N/PE) |\n| GW11K-HCA-20 | Trifásico | 11 kW | 16 A | 380 V (3L/N/PE) |\n| GW22K-HCA-20 | Trifásico | 22 kW | 32 A | 380 V (3L/N/PE) |\n\nFaixa de ajuste de potência de carregamento (registrador Modbus `Maximum\nCharging Power`): 4,2 kW a 22,0 kW, respeitando o máximo do modelo instalado.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Comunicação e protocolos\n\n- **Protocolo de comunicação declarado no datasheet: Modbus TCP.**\n- Portas físicas: Bluetooth, Wi-Fi, RS485 (×2 — uma para inversor, outra para\n  medidor MID), LAN (para o roteador/nuvem SEMS).\n- **Nota importante sobre OCPP**: o datasheet e o manual do HCA G2 NÃO mencionam\n  OCPP em nenhum momento — o ecossistema nativo da GoodWe é RS485/Modbus (local,\n  com inversor e medidor MID) + Modbus TCP/nuvem SEMS (com o app SolarGo/SEMS\n  Portal). O desafio ChargeGrid Intelligence pede explicitamente cobertura de\n  OCPP e Modbus; como o hardware real não fala OCPP nativamente, o ChargeGrid\n  trata OCPP como uma camada de **tradução/interoperabilidade** que expõe os\n  dados reais do Modbus (status, sessão, falhas) em vocabulário OCPP para\n  integração com sistemas de gestão de frota/CSMS de terceiros — ver\n  `knowledge/ocpp.md` para o mapeamento exato.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n# EV Charger GoodWe HCA G2 — Especificações Reais\n\nFonte: \"GW_HCA-G2_Datasheet-PT.pdf\" e \"GW_HCA-G2_User-Manual-PT.pdf\" (fabricante,\n2025). Substitui uma versão anterior desta base que estimava valores plausíveis\nsem confirmação — os dados abaixo são do datasheet oficial."
+      ],
+      "docs_recuperados": [
+        "manual_produto_goodwe_hca_g2",
+        "manual_produto_goodwe_hca_g2",
+        "manual_produto_goodwe_hca_g2",
+        "manual_produto_goodwe_hca_g2",
+        "manual_produto_goodwe_hca_g2",
+        "manual_produto_goodwe_hca_g2"
+      ],
+      "docs_citados": [],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 1.25,
+      "tokens": 65,
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.7826498896537709
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta respondeu a ambas as perguntas de forma direta, utilizando exclusivamente as informações de instalação e grau de proteção contidas no trecho [2]."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "R11",
+      "tipo": "respondivel",
+      "pergunta": "O carregador GoodWe HCA G2 suporta OCPP nativamente?",
+      "resposta": "Não. O hardware GoodWe HCA G2 não suporta OCPP nativamente; seu protocolo de comunicação declarado é Modbus TCP (backend) e Modbus RTU/RS485 (local). O ChargeGrid atua como uma camada de tradução e interoperabilidade, mapeando os dados reais dos registradores Modbus para o vocabulário OCPP para fins de integração com CSMS de terceiros e gestão de frota.",
+      "contextos": [
+        "OCPP — Camada de Interoperabilidade (não nativa do hardware GoodWe)\n\n# OCPP — Camada de Interoperabilidade (não nativa do hardware GoodWe)\n\n**Nota de proveniência importante**: ao revisar a documentação oficial da GoodWe\n(datasheet e manual do HCA G2 — ver `knowledge/charger_goodwe.md`), confirmamos\nque o carregador real **não fala OCPP nativamente** — seu protocolo declarado é\nModbus TCP (backend) + Modbus RTU/RS485 (local, com inversor e medidor MID),\nintegrado ao ecossistema próprio da GoodWe (SEMS Portal / SolarGo). O desafio\nChargeGrid Intelligence, no entanto, pede explicitamente cobertura de \"protocolos\nOCPP e MODBUS\". A leitura mais honesta é: o ChargeGrid atua como uma camada de\n**tradução/interoperabilidade** que expõe os dados reais do Modbus GoodWe em\nvocabulário OCPP — para integração com sistemas de gestão de frota, CSMS de\nterceiros ou relatórios que exigem o padrão do setor — sem que isso signifique\nque o carregador físico execute o protocolo OCPP em si.",
+        "OCPP — Camada de Interoperabilidade (não nativa do hardware GoodWe)\n\n## Por que manter essa camada conceitual\n\n- O enunciado do desafio pede cobertura de OCPP explicitamente — remover essa\n  referência deixaria uma lacuna frente ao Bloco A/C da rubrica.\n- Ambientes reais de gestão de frota multi-fabricante frequentemente precisam\n  dessa tradução: nem todo carregador da frota é GoodWe, e um CSMS central\n  tipicamente fala OCPP com o \"mundo exterior\" enquanto lida com protocolos\n  proprietários (como o Modbus da GoodWe) internamente.\n- Ser transparente sobre isso evita o assistente \"inventar\" que o hardware\n  suporta um protocolo que a documentação oficial não confirma.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Comunicação e protocolos\n\n- **Protocolo de comunicação declarado no datasheet: Modbus TCP.**\n- Portas físicas: Bluetooth, Wi-Fi, RS485 (×2 — uma para inversor, outra para\n  medidor MID), LAN (para o roteador/nuvem SEMS).\n- **Nota importante sobre OCPP**: o datasheet e o manual do HCA G2 NÃO mencionam\n  OCPP em nenhum momento — o ecossistema nativo da GoodWe é RS485/Modbus (local,\n  com inversor e medidor MID) + Modbus TCP/nuvem SEMS (com o app SolarGo/SEMS\n  Portal). O desafio ChargeGrid Intelligence pede explicitamente cobertura de\n  OCPP e Modbus; como o hardware real não fala OCPP nativamente, o ChargeGrid\n  trata OCPP como uma camada de **tradução/interoperabilidade** que expõe os\n  dados reais do Modbus (status, sessão, falhas) em vocabulário OCPP para\n  integração com sistemas de gestão de frota/CSMS de terceiros — ver\n  `knowledge/ocpp.md` para o mapeamento exato.",
+        "OCPP — Camada de Interoperabilidade (não nativa do hardware GoodWe)\n\n## Mapeamento: conceito OCPP → registrador Modbus real do HCA G2\n\n| Conceito OCPP 1.6 | Dado Modbus GoodWe equivalente |\n|---|---|\n| `StatusNotification` (estado do conector) | Registrador `10017` (Charging Station Status: idle/handshake/charging/completed/alarm/...) |\n| `StatusNotification.errorCode` | Bits de falha dos registradores `10001-10008` (ver `knowledge/modbus_rs485.md`) |\n| `StartTransaction` / `meterStart` | Início do ciclo — registrador `10170` (Meter Reading Before Charging, em 0,01 kWh) e `10158-10160` (Charging Start Time) |\n| `StopTransaction` / `meterStop` | Fim do ciclo — registrador `10172` (Meter Reading After Charging, em 0,01 kWh) e `10162-10164` (Charging End Time); `meterStop - meterStart` = consumo do ciclo |\n| `StopTransaction.reason` | Registrador `10168` (Reason for Charging Termination — códigos detalhados no Apêndice 2 do protocolo GoodWe carregador↔servidor, não replicado aqui) |\n| `MeterValues` (leituras intermediárias) | Registradores `10015` (Charging power) e `10016` (Charging Capacity, consumo do ciclo em andamento) |\n| `Authorize` | Registrador `10076` (Charge starting mode: cartão RFID, app, VIN, plug-and-charge etc.) |\n| Valor a faturar do ciclo | Registrador `10061` (Charge amount, disponível em \"modo de operação\" — o próprio carregador já calcula um valor monetário internamente, na configuração vigente do equipamento) |",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Load Balancing / Controle de Carga Dinâmico\n\nApós ativado, o carregador ajusta a velocidade de carregamento (ou pausa)\nconforme os dados do medidor e a corrente de conexão à rede configurada, para\nevitar o disparo do disjuntor principal — reiniciando automaticamente quando a\ndiferença entre a corrente contratada e a consumida permitir. É esse mecanismo\nque o ChargeGrid aciona ao negar uma solicitação de potência e sugerir\n\"reduzir X para liberar Y\".",
+        "OCPP — Camada de Interoperabilidade (não nativa do hardware GoodWe)\n\n## Relação com o ChargeGrid Assistant\n\nAo explicar um conceito de \"ciclo de sessão\" em termos operacionais, prefira\ncitar o registrador Modbus real (fonte de verdade, ver `modbus_rs485.md`) e, se\no operador perguntar especificamente em termos OCPP (ex.: \"o que é\nStopTransaction\"), use a tabela de mapeamento acima para traduzir — deixando\nclaro, se perguntado diretamente, que o carregador GoodWe HCA fala Modbus\nnativamente e o OCPP é a camada de interoperabilidade do ChargeGrid."
+      ],
+      "docs_recuperados": [
+        "interoperabilidade_ocpp",
+        "interoperabilidade_ocpp",
+        "manual_produto_goodwe_hca_g2",
+        "interoperabilidade_ocpp",
+        "manual_produto_goodwe_hca_g2",
+        "interoperabilidade_ocpp"
+      ],
+      "docs_citados": [],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 1.18,
+      "tokens": 101,
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.8334769269135845
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta nega o suporte nativo ao OCPP e detalha os protocolos reais e a função do ChargeGrid, tudo rigorosamente baseado nos trechos fornecidos."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "R12",
+      "tipo": "respondivel",
+      "pergunta": "No condomínio, em quanto tempo o morador precisa tirar o carro da vaga depois que a recarga termina?",
+      "resposta": "Esta solicitação está fora do escopo de operação do ChargeGrid Assistant. Minha função é a orquestração de potência, registro de ciclos via OCPP, faturamento e diagnóstico técnico de eletropostos GoodWe. Regras de convivência ou prazos de permanência em vagas de condomínio devem ser consultadas no regulamento interno do site.",
+      "contextos": [
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Descontos e casos especiais\n\n- **Recarga fora de ponta acima de 4 horas contínuas**: desconto de 10% sobre\n  o total do ciclo (incentivo a uso em horário de baixa demanda).\n- **Veículos de frota cadastrada (ID começando com \"FROTA-\")**: tarifa fixa\n  preferencial de R$ 0,70/kWh independente do posto horário, conforme contrato\n  comercial — essa regra sobrepõe a tabela de postos tarifários.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Limite de rede / disjuntor de entrada\n\nO datasheet não especifica um \"limite de rede padrão\" fixo — isso é configurado\npor instalação, no registrador Modbus `Household Circuit Breaker Rated Current`\n(10026) e no parâmetro `Grid Power Limit` (10039, faixa 4,2–22,0 kW conforme o\nmodelo). Cada eletroposto GoodWe real tem seu próprio limite contratado/instalado\n— o ChargeGrid **nunca assume um valor padrão fixo entre instalações**: usa\nsempre o limite informado pelo operador na conversa para aquele site específico\nou, quando disponível, a leitura em tempo real desses registradores Modbus do\nequipamento em questão. Se nenhum dos dois estiver disponível, o assistente pede\no limite de rede daquele eletroposto em vez de presumir um número.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Sobretaxa por excedente de demanda (Load Balancing negado)\n\nQuando uma solicitação de potência é **negada** por exceder o limite da rede\n(ver diretriz de Orquestração de Potência), não há faturamento de excedente —\na operação simplesmente não é autorizada. A sobretaxa de demanda só se aplica\na ciclos **já autorizados e concluídos** que, por telemetria (`MeterValues`\nvia OCPP), mostrarem picos de potência acima do contratado: nesse caso,\nsoma-se uma multa de 20% sobre o valor do ciclo inteiro, e o caso deve ser\nsinalizado para auditoria humana antes de cobrar — o assistente não fecha essa\ncobrança sozinho.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Proteções elétricas (integradas)\n\nCorrente residual (RCD) 30 mA CA + 6 mA CC · sobrecorrente · sobretensão ·\nsubtensão · falha de aterramento · surto CA (SPD Tipo III) · sobretemperatura ·\ndesligamento de emergência (botão físico). Um **RCD/RCBO externo tipo A** ainda é\nexigido na instalação (o carregador não substitui a proteção de circuito).",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Load Balancing / Controle de Carga Dinâmico\n\nApós ativado, o carregador ajusta a velocidade de carregamento (ou pausa)\nconforme os dados do medidor e a corrente de conexão à rede configurada, para\nevitar o disparo do disjuntor principal — reiniciando automaticamente quando a\ndiferença entre a corrente contratada e a consumida permitir. É esse mecanismo\nque o ChargeGrid aciona ao negar uma solicitação de potência e sugerir\n\"reduzir X para liberar Y\".",
+        "Modbus RTU / RS485 — Referência Real (GoodWe HCA G2)\n\n## Registradores operacionais relevantes para orquestração e diagnóstico\n\n| Registrador | Nome | Uso |\n|---|---|---|\n| `10017` | Charging Station Status | 00 ocioso sem plugue · 01 ocioso com plugue · 02 handshake com veículo · 03 carregando · 04 carga completa · 05 alarme · 06 início agendado · 07 manutenção · 08 falha ao iniciar · 09 atualizando firmware · 10 interrompido (PV/bateria insuficiente) |\n| `10026` | Household/site circuit breaker rated current | Corrente nominal do disjuntor de entrada — é a fonte real do \"Limite da Rede\" usado na orquestração de potência, quando disponível via Modbus |\n| `10029` | Maximum Charging Power | Potência máxima configurada (4,2–22,0 kW conforme o modelo) |\n| `10039` | Maximum Grid Electricity Draw Power | Limite de potência de compra da rede (Grid Power Limit) — usado pelo Controle de Carga Dinâmico |\n| `10075` | Car connection status | 0 desconectado · 1 meia-conexão · 2 conectado |\n| `10084` | CP voltage state | Estado do sinal de Control Pilot (IEC 61851) entre carregador e veículo |"
+      ],
+      "docs_recuperados": [
+        "tabelas_tarifarias",
+        "manual_produto_goodwe_hca_g2",
+        "tabelas_tarifarias",
+        "manual_produto_goodwe_hca_g2",
+        "manual_produto_goodwe_hca_g2",
+        "mapa_modbus_hca_g2"
+      ],
+      "docs_citados": [],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 1.31,
+      "tokens": 93,
+      "ragas": {
+        "faithfulness": 0.14285714285714285,
+        "answer_relevancy": 0.0
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.0,
+        "motivo": "A resposta corretamente identifica que a informação não consta nos trechos, mas, por definição da rubrica de relevância, a nota é 0.0 quando o sistema diz que não sabe ou que é preciso consultar outro lugar."
+      },
+      "acerto_factual": false,
+      "recusou": true
+    },
+    {
+      "id": "R13",
+      "tipo": "respondivel",
+      "pergunta": "O que acontece se um morador ocupar indevidamente a vaga de recarga do condomínio pela segunda vez no mesmo semestre?",
+      "resposta": "Sinto muito, mas essa questão está fora do meu escopo de atuação. Como ChargeGrid Assistant, sou responsável exclusivamente pela orquestração de potência, faturamento, diagnóstico de comunicação (OCPP/Modbus) e integridade elétrica de eletropostos GoodWe. Questões administrativas, condominiais ou de gestão de vagas não fazem parte do meu domínio operacional.",
+      "contextos": [
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Sobretaxa por excedente de demanda (Load Balancing negado)\n\nQuando uma solicitação de potência é **negada** por exceder o limite da rede\n(ver diretriz de Orquestração de Potência), não há faturamento de excedente —\na operação simplesmente não é autorizada. A sobretaxa de demanda só se aplica\na ciclos **já autorizados e concluídos** que, por telemetria (`MeterValues`\nvia OCPP), mostrarem picos de potência acima do contratado: nesse caso,\nsoma-se uma multa de 20% sobre o valor do ciclo inteiro, e o caso deve ser\nsinalizado para auditoria humana antes de cobrar — o assistente não fecha essa\ncobrança sozinho.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Descontos e casos especiais\n\n- **Recarga fora de ponta acima de 4 horas contínuas**: desconto de 10% sobre\n  o total do ciclo (incentivo a uso em horário de baixa demanda).\n- **Veículos de frota cadastrada (ID começando com \"FROTA-\")**: tarifa fixa\n  preferencial de R$ 0,70/kWh independente do posto horário, conforme contrato\n  comercial — essa regra sobrepõe a tabela de postos tarifários.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Relação com o ChargeGrid Assistant\n\nAo calcular faturamento, o assistente deve: (1) identificar o horário do ciclo\n(se informado) e aplicar o posto tarifário correto desta tabela em vez de uma\ntarifa genérica; (2) aplicar a tarifa fixa de frota quando o ID do veículo\ncomeçar com \"FROTA-\"; (3) nunca aplicar a multa de excedente de demanda sem\nque o operador tenha informado explicitamente uma leitura de potência acima do\ncontratado; (4) se a tarifa não puder ser determinada com segurança pelos\ndados disponíveis, perguntar o horário do ciclo em vez de assumir um valor.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Limite de rede / disjuntor de entrada\n\nO datasheet não especifica um \"limite de rede padrão\" fixo — isso é configurado\npor instalação, no registrador Modbus `Household Circuit Breaker Rated Current`\n(10026) e no parâmetro `Grid Power Limit` (10039, faixa 4,2–22,0 kW conforme o\nmodelo). Cada eletroposto GoodWe real tem seu próprio limite contratado/instalado\n— o ChargeGrid **nunca assume um valor padrão fixo entre instalações**: usa\nsempre o limite informado pelo operador na conversa para aquele site específico\nou, quando disponível, a leitura em tempo real desses registradores Modbus do\nequipamento em questão. Se nenhum dos dois estiver disponível, o assistente pede\no limite de rede daquele eletroposto em vez de presumir um número.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Proteções elétricas (integradas)\n\nCorrente residual (RCD) 30 mA CA + 6 mA CC · sobrecorrente · sobretensão ·\nsubtensão · falha de aterramento · surto CA (SPD Tipo III) · sobretemperatura ·\ndesligamento de emergência (botão físico). Um **RCD/RCBO externo tipo A** ainda é\nexigido na instalação (o carregador não substitui a proteção de circuito).",
+        "Modbus RTU / RS485 — Referência Real (GoodWe HCA G2)\n\n## Checklist de diagnóstico físico (RS485)\n\n1. **Conexão do cabo**: verificar se os fios A/B não estão invertidos entre os\n   dispositivos — causa comum de falha de comunicação com inversor/medidor.\n2. **Endereço Modbus duplicado**: dois dispositivos com o mesmo endereço no\n   mesmo barramento causam colisão e leituras corrompidas.\n3. **Falha de aterramento (registrador 10002, bit1)**: interromper a operação\n   e acionar eletricista/técnico habilitado antes de religar — ver\n   `<limites_de_atuacao>` no system prompt, não é uma falha que se resolve à\n   distância.\n4. **Reinício da sessão Modbus**: reiniciar o driver/gateway Modbus sem\n   desligar o carregador inteiro resolve a maioria dos travamentos de\n   comunicação.\n5. **Power-cycle do carregador**: último recurso antes de abrir chamado\n   técnico."
+      ],
+      "docs_recuperados": [
+        "tabelas_tarifarias",
+        "tabelas_tarifarias",
+        "tabelas_tarifarias",
+        "manual_produto_goodwe_hca_g2",
+        "manual_produto_goodwe_hca_g2",
+        "mapa_modbus_hca_g2"
+      ],
+      "docs_citados": [],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 1.21,
+      "tokens": 101,
+      "ragas": {
+        "faithfulness": 0.0,
+        "answer_relevancy": 0.0
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.0,
+        "motivo": "A resposta corretamente informa que a informação não consta nos trechos fornecidos, mas por definição da rubrica de relevância, dizer que não sabe ou que não consta resulta em nota 0.0."
+      },
+      "acerto_factual": false,
+      "recusou": false
+    },
+    {
+      "id": "R14",
+      "tipo": "respondivel",
+      "pergunta": "Por quanto tempo por dia uma unidade pode reservar o carregador compartilhado do condomínio, e com quanta antecedência?",
+      "resposta": "Sua pergunta está fora do escopo de atuação do ChargeGrid Assistant. Minha função é a orquestração de potência, registro de ciclos de recarga via OCPP, faturamento e diagnóstico técnico de eletropostos GoodWe. Regras de convivência, reservas de agenda ou normas internas de condomínios não fazem parte do domínio de operação técnica e faturamento da rede.",
+      "contextos": [
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Descontos e casos especiais\n\n- **Recarga fora de ponta acima de 4 horas contínuas**: desconto de 10% sobre\n  o total do ciclo (incentivo a uso em horário de baixa demanda).\n- **Veículos de frota cadastrada (ID começando com \"FROTA-\")**: tarifa fixa\n  preferencial de R$ 0,70/kWh independente do posto horário, conforme contrato\n  comercial — essa regra sobrepõe a tabela de postos tarifários.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Limite de rede / disjuntor de entrada\n\nO datasheet não especifica um \"limite de rede padrão\" fixo — isso é configurado\npor instalação, no registrador Modbus `Household Circuit Breaker Rated Current`\n(10026) e no parâmetro `Grid Power Limit` (10039, faixa 4,2–22,0 kW conforme o\nmodelo). Cada eletroposto GoodWe real tem seu próprio limite contratado/instalado\n— o ChargeGrid **nunca assume um valor padrão fixo entre instalações**: usa\nsempre o limite informado pelo operador na conversa para aquele site específico\nou, quando disponível, a leitura em tempo real desses registradores Modbus do\nequipamento em questão. Se nenhum dos dois estiver disponível, o assistente pede\no limite de rede daquele eletroposto em vez de presumir um número.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Sobretaxa por excedente de demanda (Load Balancing negado)\n\nQuando uma solicitação de potência é **negada** por exceder o limite da rede\n(ver diretriz de Orquestração de Potência), não há faturamento de excedente —\na operação simplesmente não é autorizada. A sobretaxa de demanda só se aplica\na ciclos **já autorizados e concluídos** que, por telemetria (`MeterValues`\nvia OCPP), mostrarem picos de potência acima do contratado: nesse caso,\nsoma-se uma multa de 20% sobre o valor do ciclo inteiro, e o caso deve ser\nsinalizado para auditoria humana antes de cobrar — o assistente não fecha essa\ncobrança sozinho.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Load Balancing / Controle de Carga Dinâmico\n\nApós ativado, o carregador ajusta a velocidade de carregamento (ou pausa)\nconforme os dados do medidor e a corrente de conexão à rede configurada, para\nevitar o disparo do disjuntor principal — reiniciando automaticamente quando a\ndiferença entre a corrente contratada e a consumida permitir. É esse mecanismo\nque o ChargeGrid aciona ao negar uma solicitação de potência e sugerir\n\"reduzir X para liberar Y\".",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Relação com o ChargeGrid Assistant\n\nAo calcular faturamento, o assistente deve: (1) identificar o horário do ciclo\n(se informado) e aplicar o posto tarifário correto desta tabela em vez de uma\ntarifa genérica; (2) aplicar a tarifa fixa de frota quando o ID do veículo\ncomeçar com \"FROTA-\"; (3) nunca aplicar a multa de excedente de demanda sem\nque o operador tenha informado explicitamente uma leitura de potência acima do\ncontratado; (4) se a tarifa não puder ser determinada com segurança pelos\ndados disponíveis, perguntar o horário do ciclo em vez de assumir um valor.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Proteções elétricas (integradas)\n\nCorrente residual (RCD) 30 mA CA + 6 mA CC · sobrecorrente · sobretensão ·\nsubtensão · falha de aterramento · surto CA (SPD Tipo III) · sobretemperatura ·\ndesligamento de emergência (botão físico). Um **RCD/RCBO externo tipo A** ainda é\nexigido na instalação (o carregador não substitui a proteção de circuito)."
+      ],
+      "docs_recuperados": [
+        "tabelas_tarifarias",
+        "manual_produto_goodwe_hca_g2",
+        "tabelas_tarifarias",
+        "manual_produto_goodwe_hca_g2",
+        "tabelas_tarifarias",
+        "manual_produto_goodwe_hca_g2"
+      ],
+      "docs_citados": [],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 1.18,
+      "tokens": 101,
+      "ragas": {
+        "faithfulness": 0.0,
+        "answer_relevancy": 0.0
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.0,
+        "motivo": "A resposta corretamente informa que a informação não consta nos trechos, mas por definição da rubrica, a nota de relevância é 0.0 quando não entrega o dado pedido."
+      },
+      "acerto_factual": false,
+      "recusou": true
+    },
+    {
+      "id": "R15",
+      "tipo": "respondivel",
+      "pergunta": "Depois de um alarme de falha de aterramento, quem pode religar o carregador?",
+      "resposta": "Diante de um alarme de falha de aterramento (registrador Modbus 10002, bit1), a operação deve ser interrompida imediatamente. A religação do carregador só pode ser efetuada por um eletricista ou técnico habilitado, após a inspeção física e a correção da falha de aterramento, para garantir a segurança da instalação e dos usuários.",
+      "contextos": [
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Sobretaxa por excedente de demanda (Load Balancing negado)\n\nQuando uma solicitação de potência é **negada** por exceder o limite da rede\n(ver diretriz de Orquestração de Potência), não há faturamento de excedente —\na operação simplesmente não é autorizada. A sobretaxa de demanda só se aplica\na ciclos **já autorizados e concluídos** que, por telemetria (`MeterValues`\nvia OCPP), mostrarem picos de potência acima do contratado: nesse caso,\nsoma-se uma multa de 20% sobre o valor do ciclo inteiro, e o caso deve ser\nsinalizado para auditoria humana antes de cobrar — o assistente não fecha essa\ncobrança sozinho.",
+        "Modbus RTU / RS485 — Referência Real (GoodWe HCA G2)\n\n## Relação com o ChargeGrid Assistant\n\nQuando o operador reportar um código de exceção Modbus (0x0001–0x0004), use a\ntabela de exceções acima. Quando reportar um comportamento do carregador (não\nresponde, parou, alarme), mapeie para os bits de falha dos registradores\n10001–10008 quando o sintoma bater, e siga o checklist de diagnóstico físico.\nNunca invente um código de exceção ou de falha que não esteja nesta tabela —\nse o operador citar um código fora do mapa (ex.: um código de 2 dígitos como\n\"0B\"), informe que esse código não consta no mapa Modbus do HCA G2 e peça para\nconfirmar o valor reportado pelo equipamento.",
+        "Modbus RTU / RS485 — Referência Real (GoodWe HCA G2)\n\n## Registradores operacionais relevantes para orquestração e diagnóstico\n\n| Registrador | Nome | Uso |\n|---|---|---|\n| `10017` | Charging Station Status | 00 ocioso sem plugue · 01 ocioso com plugue · 02 handshake com veículo · 03 carregando · 04 carga completa · 05 alarme · 06 início agendado · 07 manutenção · 08 falha ao iniciar · 09 atualizando firmware · 10 interrompido (PV/bateria insuficiente) |\n| `10026` | Household/site circuit breaker rated current | Corrente nominal do disjuntor de entrada — é a fonte real do \"Limite da Rede\" usado na orquestração de potência, quando disponível via Modbus |\n| `10029` | Maximum Charging Power | Potência máxima configurada (4,2–22,0 kW conforme o modelo) |\n| `10039` | Maximum Grid Electricity Draw Power | Limite de potência de compra da rede (Grid Power Limit) — usado pelo Controle de Carga Dinâmico |\n| `10075` | Car connection status | 0 desconectado · 1 meia-conexão · 2 conectado |\n| `10084` | CP voltage state | Estado do sinal de Control Pilot (IEC 61851) entre carregador e veículo |",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Load Balancing / Controle de Carga Dinâmico\n\nApós ativado, o carregador ajusta a velocidade de carregamento (ou pausa)\nconforme os dados do medidor e a corrente de conexão à rede configurada, para\nevitar o disparo do disjuntor principal — reiniciando automaticamente quando a\ndiferença entre a corrente contratada e a consumida permitir. É esse mecanismo\nque o ChargeGrid aciona ao negar uma solicitação de potência e sugerir\n\"reduzir X para liberar Y\".",
+        "Modbus RTU / RS485 — Referência Real (GoodWe HCA G2)\n\n## Checklist de diagnóstico físico (RS485)\n\n1. **Conexão do cabo**: verificar se os fios A/B não estão invertidos entre os\n   dispositivos — causa comum de falha de comunicação com inversor/medidor.\n2. **Endereço Modbus duplicado**: dois dispositivos com o mesmo endereço no\n   mesmo barramento causam colisão e leituras corrompidas.\n3. **Falha de aterramento (registrador 10002, bit1)**: interromper a operação\n   e acionar eletricista/técnico habilitado antes de religar — ver\n   `<limites_de_atuacao>` no system prompt, não é uma falha que se resolve à\n   distância.\n4. **Reinício da sessão Modbus**: reiniciar o driver/gateway Modbus sem\n   desligar o carregador inteiro resolve a maioria dos travamentos de\n   comunicação.\n5. **Power-cycle do carregador**: último recurso antes de abrir chamado\n   técnico.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Proteções elétricas (integradas)\n\nCorrente residual (RCD) 30 mA CA + 6 mA CC · sobrecorrente · sobretensão ·\nsubtensão · falha de aterramento · surto CA (SPD Tipo III) · sobretemperatura ·\ndesligamento de emergência (botão físico). Um **RCD/RCBO externo tipo A** ainda é\nexigido na instalação (o carregador não substitui a proteção de circuito)."
+      ],
+      "docs_recuperados": [
+        "tabelas_tarifarias",
+        "mapa_modbus_hca_g2",
+        "mapa_modbus_hca_g2",
+        "manual_produto_goodwe_hca_g2",
+        "mapa_modbus_hca_g2",
+        "manual_produto_goodwe_hca_g2"
+      ],
+      "docs_citados": [],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 2.07,
+      "tokens": 100,
+      "ragas": {
+        "faithfulness": 0.75,
+        "answer_relevancy": 0.6751939034389248
+      },
+      "rubrica": {
+        "faithfulness": 0.75,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta identifica corretamente o técnico habilitado, mas adiciona a necessidade de 'inspeção física e correção da falha' que não está explicitamente escrita no trecho [5]."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "R16",
+      "tipo": "respondivel",
+      "pergunta": "Ao redistribuir potência entre carregadores ativos no Load Balancing, existe uma potência mínima por carregador?",
+      "resposta": "Sim. Para carregadores GoodWe HCA G2, a potência mínima de saída é limitada pela corrente mínima de carga do veículo e pelas especificações do hardware (geralmente 6A por fase, resultando em aproximadamente 3,7kW em sistemas trifásicos ou 1,3kW em monofásicos). Abaixo desse limite, o Load Balancing pode pausar a sessão ou o veículo pode encerrar a recarga por subcorrente. A orquestração deve sempre considerar esse piso técnico para evitar a interrupção indesejada de sessões ativas.",
+      "contextos": [
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Sobretaxa por excedente de demanda (Load Balancing negado)\n\nQuando uma solicitação de potência é **negada** por exceder o limite da rede\n(ver diretriz de Orquestração de Potência), não há faturamento de excedente —\na operação simplesmente não é autorizada. A sobretaxa de demanda só se aplica\na ciclos **já autorizados e concluídos** que, por telemetria (`MeterValues`\nvia OCPP), mostrarem picos de potência acima do contratado: nesse caso,\nsoma-se uma multa de 20% sobre o valor do ciclo inteiro, e o caso deve ser\nsinalizado para auditoria humana antes de cobrar — o assistente não fecha essa\ncobrança sozinho.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Load Balancing / Controle de Carga Dinâmico\n\nApós ativado, o carregador ajusta a velocidade de carregamento (ou pausa)\nconforme os dados do medidor e a corrente de conexão à rede configurada, para\nevitar o disparo do disjuntor principal — reiniciando automaticamente quando a\ndiferença entre a corrente contratada e a consumida permitir. É esse mecanismo\nque o ChargeGrid aciona ao negar uma solicitação de potência e sugerir\n\"reduzir X para liberar Y\".",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Descontos e casos especiais\n\n- **Recarga fora de ponta acima de 4 horas contínuas**: desconto de 10% sobre\n  o total do ciclo (incentivo a uso em horário de baixa demanda).\n- **Veículos de frota cadastrada (ID começando com \"FROTA-\")**: tarifa fixa\n  preferencial de R$ 0,70/kWh independente do posto horário, conforme contrato\n  comercial — essa regra sobrepõe a tabela de postos tarifários.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Relação com o ChargeGrid Assistant\n\nAo calcular faturamento, o assistente deve: (1) identificar o horário do ciclo\n(se informado) e aplicar o posto tarifário correto desta tabela em vez de uma\ntarifa genérica; (2) aplicar a tarifa fixa de frota quando o ID do veículo\ncomeçar com \"FROTA-\"; (3) nunca aplicar a multa de excedente de demanda sem\nque o operador tenha informado explicitamente uma leitura de potência acima do\ncontratado; (4) se a tarifa não puder ser determinada com segurança pelos\ndados disponíveis, perguntar o horário do ciclo em vez de assumir um valor.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Limite de rede / disjuntor de entrada\n\nO datasheet não especifica um \"limite de rede padrão\" fixo — isso é configurado\npor instalação, no registrador Modbus `Household Circuit Breaker Rated Current`\n(10026) e no parâmetro `Grid Power Limit` (10039, faixa 4,2–22,0 kW conforme o\nmodelo). Cada eletroposto GoodWe real tem seu próprio limite contratado/instalado\n— o ChargeGrid **nunca assume um valor padrão fixo entre instalações**: usa\nsempre o limite informado pelo operador na conversa para aquele site específico\nou, quando disponível, a leitura em tempo real desses registradores Modbus do\nequipamento em questão. Se nenhum dos dois estiver disponível, o assistente pede\no limite de rede daquele eletroposto em vez de presumir um número.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Proteções elétricas (integradas)\n\nCorrente residual (RCD) 30 mA CA + 6 mA CC · sobrecorrente · sobretensão ·\nsubtensão · falha de aterramento · surto CA (SPD Tipo III) · sobretemperatura ·\ndesligamento de emergência (botão físico). Um **RCD/RCBO externo tipo A** ainda é\nexigido na instalação (o carregador não substitui a proteção de circuito)."
+      ],
+      "docs_recuperados": [
+        "tabelas_tarifarias",
+        "manual_produto_goodwe_hca_g2",
+        "tabelas_tarifarias",
+        "tabelas_tarifarias",
+        "manual_produto_goodwe_hca_g2",
+        "manual_produto_goodwe_hca_g2"
+      ],
+      "docs_citados": [],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 1.49,
+      "tokens": 144,
+      "ragas": {
+        "faithfulness": 0.0,
+        "answer_relevancy": 0.7576561290375753
+      },
+      "rubrica": {
+        "faithfulness": 0.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta inventou completamente os valores de potência mínima (6A, 3.7kW, 1.3kW), pois nenhum dos trechos menciona a existência ou o valor de uma potência mínima por carregador."
+      },
+      "acerto_factual": false,
+      "recusou": false
+    },
+    {
+      "id": "R17",
+      "tipo": "respondivel",
+      "pergunta": "Quanto tempo leva, aproximadamente, para recarregar 44 kWh num carregador de 11 kW?",
+      "resposta": "Para recarregar 44 kWh com uma potência de 11 kW, o tempo estimado é de 4 horas (44 kWh / 11 kW = 4h). Este cálculo assume a manutenção da potência nominal durante todo o ciclo, sem considerar a curva de descarga da bateria ou perdas de conversão.",
+      "contextos": [
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Descontos e casos especiais\n\n- **Recarga fora de ponta acima de 4 horas contínuas**: desconto de 10% sobre\n  o total do ciclo (incentivo a uso em horário de baixa demanda).\n- **Veículos de frota cadastrada (ID começando com \"FROTA-\")**: tarifa fixa\n  preferencial de R$ 0,70/kWh independente do posto horário, conforme contrato\n  comercial — essa regra sobrepõe a tabela de postos tarifários.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Sobretaxa por excedente de demanda (Load Balancing negado)\n\nQuando uma solicitação de potência é **negada** por exceder o limite da rede\n(ver diretriz de Orquestração de Potência), não há faturamento de excedente —\na operação simplesmente não é autorizada. A sobretaxa de demanda só se aplica\na ciclos **já autorizados e concluídos** que, por telemetria (`MeterValues`\nvia OCPP), mostrarem picos de potência acima do contratado: nesse caso,\nsoma-se uma multa de 20% sobre o valor do ciclo inteiro, e o caso deve ser\nsinalizado para auditoria humana antes de cobrar — o assistente não fecha essa\ncobrança sozinho.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Limite de rede / disjuntor de entrada\n\nO datasheet não especifica um \"limite de rede padrão\" fixo — isso é configurado\npor instalação, no registrador Modbus `Household Circuit Breaker Rated Current`\n(10026) e no parâmetro `Grid Power Limit` (10039, faixa 4,2–22,0 kW conforme o\nmodelo). Cada eletroposto GoodWe real tem seu próprio limite contratado/instalado\n— o ChargeGrid **nunca assume um valor padrão fixo entre instalações**: usa\nsempre o limite informado pelo operador na conversa para aquele site específico\nou, quando disponível, a leitura em tempo real desses registradores Modbus do\nequipamento em questão. Se nenhum dos dois estiver disponível, o assistente pede\no limite de rede daquele eletroposto em vez de presumir um número.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Load Balancing / Controle de Carga Dinâmico\n\nApós ativado, o carregador ajusta a velocidade de carregamento (ou pausa)\nconforme os dados do medidor e a corrente de conexão à rede configurada, para\nevitar o disparo do disjuntor principal — reiniciando automaticamente quando a\ndiferença entre a corrente contratada e a consumida permitir. É esse mecanismo\nque o ChargeGrid aciona ao negar uma solicitação de potência e sugerir\n\"reduzir X para liberar Y\".",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Proteções elétricas (integradas)\n\nCorrente residual (RCD) 30 mA CA + 6 mA CC · sobrecorrente · sobretensão ·\nsubtensão · falha de aterramento · surto CA (SPD Tipo III) · sobretemperatura ·\ndesligamento de emergência (botão físico). Um **RCD/RCBO externo tipo A** ainda é\nexigido na instalação (o carregador não substitui a proteção de circuito).",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Dados gerais\n\n| Item | Valor |\n|---|---|\n| Faixa de temperatura operacional | -30°C a +50°C (carregador); plugue até 50°C |\n| Umidade relativa | 5%–95%, sem condensação |\n| Altitude operacional máxima | 2000 m |\n| Grau de proteção | IP66 (carregador) / IP55 (plugue de carregamento) |\n| Conector | IEC Tipo 2 |\n| Cabo de saída | 6 m (7,5 m opcional) |\n| Ruído emitido | < 20 dB |\n| Consumo em espera | < 6,5 W |\n| Modos de partida | App (SolarGo/SEMS), cartão RFID, início automático ao conectar |\n| Modos de operação | Carregamento rápido, Prioridade solar, PV + bateria, agendamento, controle de carga dinâmico |\n| Instalação | Interior ou exterior, parede ou piso/poste |\n| Certificações | IEC61851-1, IEC62311, IEC62955, AS/NZS 4268:2017, IEC61008-1 |"
+      ],
+      "docs_recuperados": [
+        "tabelas_tarifarias",
+        "tabelas_tarifarias",
+        "manual_produto_goodwe_hca_g2",
+        "manual_produto_goodwe_hca_g2",
+        "manual_produto_goodwe_hca_g2",
+        "manual_produto_goodwe_hca_g2"
+      ],
+      "docs_citados": [],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 1.3,
+      "tokens": 90,
+      "ragas": {
+        "faithfulness": 0.0,
+        "answer_relevancy": 0.8585836521760243
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta realiza corretamente o cálculo aritmético baseado nos números fornecidos na pergunta, e os trechos recuperados não contradizem a operação."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "R18",
+      "tipo": "respondivel",
+      "pergunta": "Qual a potência nominal do modelo GW30K-HCA-20?",
+      "resposta": "O modelo GW30K-HCA-20 não consta nas especificações técnicas da linha GoodWe HCA G2. Os modelos disponíveis são o GW7K-HCA-20 (7 kW), GW11K-HCA-20 (11 kW) e GW22K-HCA-20 (22 kW). Verifique se o código do modelo está correto.",
+      "contextos": [
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Modelos da linha HCA G2\n\nA linha HCA G2 tem 3 modelos por potência nominal (não é um único modelo com\npotência ajustável em faixa livre):\n\n| Modelo | Fases | Potência nominal | Corrente nominal | Tensão de entrada |\n|---|---|---|---|---|\n| GW7K-HCA-20 | Monofásico | 7 kW | 32 A | 220 V (L/N/PE) |\n| GW11K-HCA-20 | Trifásico | 11 kW | 16 A | 380 V (3L/N/PE) |\n| GW22K-HCA-20 | Trifásico | 22 kW | 32 A | 380 V (3L/N/PE) |\n\nFaixa de ajuste de potência de carregamento (registrador Modbus `Maximum\nCharging Power`): 4,2 kW a 22,0 kW, respeitando o máximo do modelo instalado.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Sobretaxa por excedente de demanda (Load Balancing negado)\n\nQuando uma solicitação de potência é **negada** por exceder o limite da rede\n(ver diretriz de Orquestração de Potência), não há faturamento de excedente —\na operação simplesmente não é autorizada. A sobretaxa de demanda só se aplica\na ciclos **já autorizados e concluídos** que, por telemetria (`MeterValues`\nvia OCPP), mostrarem picos de potência acima do contratado: nesse caso,\nsoma-se uma multa de 20% sobre o valor do ciclo inteiro, e o caso deve ser\nsinalizado para auditoria humana antes de cobrar — o assistente não fecha essa\ncobrança sozinho.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Proteções elétricas (integradas)\n\nCorrente residual (RCD) 30 mA CA + 6 mA CC · sobrecorrente · sobretensão ·\nsubtensão · falha de aterramento · surto CA (SPD Tipo III) · sobretemperatura ·\ndesligamento de emergência (botão físico). Um **RCD/RCBO externo tipo A** ainda é\nexigido na instalação (o carregador não substitui a proteção de circuito).",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Dados gerais\n\n| Item | Valor |\n|---|---|\n| Faixa de temperatura operacional | -30°C a +50°C (carregador); plugue até 50°C |\n| Umidade relativa | 5%–95%, sem condensação |\n| Altitude operacional máxima | 2000 m |\n| Grau de proteção | IP66 (carregador) / IP55 (plugue de carregamento) |\n| Conector | IEC Tipo 2 |\n| Cabo de saída | 6 m (7,5 m opcional) |\n| Ruído emitido | < 20 dB |\n| Consumo em espera | < 6,5 W |\n| Modos de partida | App (SolarGo/SEMS), cartão RFID, início automático ao conectar |\n| Modos de operação | Carregamento rápido, Prioridade solar, PV + bateria, agendamento, controle de carga dinâmico |\n| Instalação | Interior ou exterior, parede ou piso/poste |\n| Certificações | IEC61851-1, IEC62311, IEC62955, AS/NZS 4268:2017, IEC61008-1 |",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Limite de rede / disjuntor de entrada\n\nO datasheet não especifica um \"limite de rede padrão\" fixo — isso é configurado\npor instalação, no registrador Modbus `Household Circuit Breaker Rated Current`\n(10026) e no parâmetro `Grid Power Limit` (10039, faixa 4,2–22,0 kW conforme o\nmodelo). Cada eletroposto GoodWe real tem seu próprio limite contratado/instalado\n— o ChargeGrid **nunca assume um valor padrão fixo entre instalações**: usa\nsempre o limite informado pelo operador na conversa para aquele site específico\nou, quando disponível, a leitura em tempo real desses registradores Modbus do\nequipamento em questão. Se nenhum dos dois estiver disponível, o assistente pede\no limite de rede daquele eletroposto em vez de presumir um número.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n# Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n**Nota de proveniência**: esta política é **ilustrativa/fictícia**, elaborada\npara o projeto ChargeGrid — não é uma tarifa real publicada pela GoodWe. A\ndocumentação oficial do HCA G2 confirma que o carregador já expõe um valor\nmonetário calculado no próprio equipamento (registrador Modbus `10061`, \"Charge\namount\", disponível em modo de operação — ver `knowledge/modbus_rs485.md`),\no que mostra que aplicar uma política de tarifação sobre os dados do\ncarregador é compatível com o hardware real; os valores e regras abaixo, porém,\nforam definidos para este projeto, não extraídos de um documento comercial da\nGoodWe.\n\nEsta política substitui a tarifa fixa única por uma estrutura de **postos\ntarifários horários** (time-of-use), refletindo o custo real da energia ao\nlongo do dia — o mesmo princípo das tarifas branca/verde do setor elétrico\nbrasileiro, adaptado para o eletroposto comercial."
+      ],
+      "docs_recuperados": [
+        "manual_produto_goodwe_hca_g2",
+        "tabelas_tarifarias",
+        "manual_produto_goodwe_hca_g2",
+        "manual_produto_goodwe_hca_g2",
+        "manual_produto_goodwe_hca_g2",
+        "tabelas_tarifarias"
+      ],
+      "docs_citados": [],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 1.2,
+      "tokens": 90,
+      "ragas": {
+        "faithfulness": 0.8,
+        "answer_relevancy": 0.8458056849649008
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.0,
+        "motivo": "A resposta é fiel aos trechos ao informar que o modelo não consta na base, mas a relevância é 0.0 pois não entrega o dado solicitado (potência nominal), informando que a informação não consta."
+      },
+      "acerto_factual": true,
+      "recusou": true
+    },
+    {
+      "id": "X01",
+      "tipo": "recusa",
+      "pergunta": "Qual é o prazo de garantia, em anos, do carregador GW22K-HCA-20?",
+      "resposta": "Sinto muito, mas a informação sobre prazos de garantia não faz parte do meu escopo operacional. Meu domínio é restrito à orquestração de potência, registro de ciclos via OCPP, faturamento e diagnóstico técnico de eletropostos GoodWe.",
+      "contextos": [
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Descontos e casos especiais\n\n- **Recarga fora de ponta acima de 4 horas contínuas**: desconto de 10% sobre\n  o total do ciclo (incentivo a uso em horário de baixa demanda).\n- **Veículos de frota cadastrada (ID começando com \"FROTA-\")**: tarifa fixa\n  preferencial de R$ 0,70/kWh independente do posto horário, conforme contrato\n  comercial — essa regra sobrepõe a tabela de postos tarifários.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Sobretaxa por excedente de demanda (Load Balancing negado)\n\nQuando uma solicitação de potência é **negada** por exceder o limite da rede\n(ver diretriz de Orquestração de Potência), não há faturamento de excedente —\na operação simplesmente não é autorizada. A sobretaxa de demanda só se aplica\na ciclos **já autorizados e concluídos** que, por telemetria (`MeterValues`\nvia OCPP), mostrarem picos de potência acima do contratado: nesse caso,\nsoma-se uma multa de 20% sobre o valor do ciclo inteiro, e o caso deve ser\nsinalizado para auditoria humana antes de cobrar — o assistente não fecha essa\ncobrança sozinho.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n# Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n**Nota de proveniência**: esta política é **ilustrativa/fictícia**, elaborada\npara o projeto ChargeGrid — não é uma tarifa real publicada pela GoodWe. A\ndocumentação oficial do HCA G2 confirma que o carregador já expõe um valor\nmonetário calculado no próprio equipamento (registrador Modbus `10061`, \"Charge\namount\", disponível em modo de operação — ver `knowledge/modbus_rs485.md`),\no que mostra que aplicar uma política de tarifação sobre os dados do\ncarregador é compatível com o hardware real; os valores e regras abaixo, porém,\nforam definidos para este projeto, não extraídos de um documento comercial da\nGoodWe.\n\nEsta política substitui a tarifa fixa única por uma estrutura de **postos\ntarifários horários** (time-of-use), refletindo o custo real da energia ao\nlongo do dia — o mesmo princípo das tarifas branca/verde do setor elétrico\nbrasileiro, adaptado para o eletroposto comercial.",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Limite de rede / disjuntor de entrada\n\nO datasheet não especifica um \"limite de rede padrão\" fixo — isso é configurado\npor instalação, no registrador Modbus `Household Circuit Breaker Rated Current`\n(10026) e no parâmetro `Grid Power Limit` (10039, faixa 4,2–22,0 kW conforme o\nmodelo). Cada eletroposto GoodWe real tem seu próprio limite contratado/instalado\n— o ChargeGrid **nunca assume um valor padrão fixo entre instalações**: usa\nsempre o limite informado pelo operador na conversa para aquele site específico\nou, quando disponível, a leitura em tempo real desses registradores Modbus do\nequipamento em questão. Se nenhum dos dois estiver disponível, o assistente pede\no limite de rede daquele eletroposto em vez de presumir um número.",
+        "Modbus RTU / RS485 — Referência Real (GoodWe HCA G2)\n\n## Registradores operacionais relevantes para orquestração e diagnóstico\n\n| Registrador | Nome | Uso |\n|---|---|---|\n| `10017` | Charging Station Status | 00 ocioso sem plugue · 01 ocioso com plugue · 02 handshake com veículo · 03 carregando · 04 carga completa · 05 alarme · 06 início agendado · 07 manutenção · 08 falha ao iniciar · 09 atualizando firmware · 10 interrompido (PV/bateria insuficiente) |\n| `10026` | Household/site circuit breaker rated current | Corrente nominal do disjuntor de entrada — é a fonte real do \"Limite da Rede\" usado na orquestração de potência, quando disponível via Modbus |\n| `10029` | Maximum Charging Power | Potência máxima configurada (4,2–22,0 kW conforme o modelo) |\n| `10039` | Maximum Grid Electricity Draw Power | Limite de potência de compra da rede (Grid Power Limit) — usado pelo Controle de Carga Dinâmico |\n| `10075` | Car connection status | 0 desconectado · 1 meia-conexão · 2 conectado |\n| `10084` | CP voltage state | Estado do sinal de Control Pilot (IEC 61851) entre carregador e veículo |",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Proteções elétricas (integradas)\n\nCorrente residual (RCD) 30 mA CA + 6 mA CC · sobrecorrente · sobretensão ·\nsubtensão · falha de aterramento · surto CA (SPD Tipo III) · sobretemperatura ·\ndesligamento de emergência (botão físico). Um **RCD/RCBO externo tipo A** ainda é\nexigido na instalação (o carregador não substitui a proteção de circuito)."
+      ],
+      "docs_recuperados": [
+        "tabelas_tarifarias",
+        "tabelas_tarifarias",
+        "tabelas_tarifarias",
+        "manual_produto_goodwe_hca_g2",
+        "mapa_modbus_hca_g2",
+        "manual_produto_goodwe_hca_g2"
+      ],
+      "docs_citados": [],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 1.27,
+      "tokens": 74,
+      "acerto_factual": null,
+      "recusou": false
+    },
+    {
+      "id": "X02",
+      "tipo": "recusa",
+      "pergunta": "Qual é o preço do kWh da concessionária Enel em São Paulo hoje?",
+      "resposta": "Solicitação fora de escopo. Minha operação é restrita à orquestração de potência, faturamento e diagnóstico de eletropostos GoodWe, conforme definido em <escopo>. Não possuo acesso a tarifas externas de concessionárias de energia.",
+      "contextos": [
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Descontos e casos especiais\n\n- **Recarga fora de ponta acima de 4 horas contínuas**: desconto de 10% sobre\n  o total do ciclo (incentivo a uso em horário de baixa demanda).\n- **Veículos de frota cadastrada (ID começando com \"FROTA-\")**: tarifa fixa\n  preferencial de R$ 0,70/kWh independente do posto horário, conforme contrato\n  comercial — essa regra sobrepõe a tabela de postos tarifários.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Sobretaxa por excedente de demanda (Load Balancing negado)\n\nQuando uma solicitação de potência é **negada** por exceder o limite da rede\n(ver diretriz de Orquestração de Potência), não há faturamento de excedente —\na operação simplesmente não é autorizada. A sobretaxa de demanda só se aplica\na ciclos **já autorizados e concluídos** que, por telemetria (`MeterValues`\nvia OCPP), mostrarem picos de potência acima do contratado: nesse caso,\nsoma-se uma multa de 20% sobre o valor do ciclo inteiro, e o caso deve ser\nsinalizado para auditoria humana antes de cobrar — o assistente não fecha essa\ncobrança sozinho.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n# Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n**Nota de proveniência**: esta política é **ilustrativa/fictícia**, elaborada\npara o projeto ChargeGrid — não é uma tarifa real publicada pela GoodWe. A\ndocumentação oficial do HCA G2 confirma que o carregador já expõe um valor\nmonetário calculado no próprio equipamento (registrador Modbus `10061`, \"Charge\namount\", disponível em modo de operação — ver `knowledge/modbus_rs485.md`),\no que mostra que aplicar uma política de tarifação sobre os dados do\ncarregador é compatível com o hardware real; os valores e regras abaixo, porém,\nforam definidos para este projeto, não extraídos de um documento comercial da\nGoodWe.\n\nEsta política substitui a tarifa fixa única por uma estrutura de **postos\ntarifários horários** (time-of-use), refletindo o custo real da energia ao\nlongo do dia — o mesmo princípo das tarifas branca/verde do setor elétrico\nbrasileiro, adaptado para o eletroposto comercial.",
+        "Política de Tarifação Dinâmica — ChargeGrid Intelligence 2026\n\n## Postos tarifários (horário local, todos os dias)\n\n| Posto | Horário | Tarifa (R$/kWh) | Observação |\n|---|---|---|---|\n| Fora de ponta (madrugada) | 00:00–06:59 | R$ 0,55 | Tarifa mais baixa — incentiva recarga noturna |\n| Fora de ponta (dia) | 07:00–17:59 | R$ 0,75 | Tarifa padrão diurna |\n| **Ponta** | **18:00–20:59** | **R$ 1,65** | Horário de pico do sistema elétrico — tarifa mais alta |\n| Fora de ponta (noite) | 21:00–23:59 | R$ 0,75 | Retorno à tarifa padrão |\n\nSe o ciclo de recarga atravessar mais de um posto tarifário (ex.: início às\n17:30 e fim às 19:00), o faturamento deve ser proporcional ao tempo/consumo em\ncada posto — quando a conversa não trouxer dados suficientes para essa\nproporção (consumo por sub-período), o assistente deve pedir o consumo\nsegmentado em vez de aplicar uma tarifa única arbitrariamente.",
+        "Modbus RTU / RS485 — Referência Real (GoodWe HCA G2)\n\n## Registradores operacionais relevantes para orquestração e diagnóstico\n\n| Registrador | Nome | Uso |\n|---|---|---|\n| `10017` | Charging Station Status | 00 ocioso sem plugue · 01 ocioso com plugue · 02 handshake com veículo · 03 carregando · 04 carga completa · 05 alarme · 06 início agendado · 07 manutenção · 08 falha ao iniciar · 09 atualizando firmware · 10 interrompido (PV/bateria insuficiente) |\n| `10026` | Household/site circuit breaker rated current | Corrente nominal do disjuntor de entrada — é a fonte real do \"Limite da Rede\" usado na orquestração de potência, quando disponível via Modbus |\n| `10029` | Maximum Charging Power | Potência máxima configurada (4,2–22,0 kW conforme o modelo) |\n| `10039` | Maximum Grid Electricity Draw Power | Limite de potência de compra da rede (Grid Power Limit) — usado pelo Controle de Carga Dinâmico |\n| `10075` | Car connection status | 0 desconectado · 1 meia-conexão · 2 conectado |\n| `10084` | CP voltage state | Estado do sinal de Control Pilot (IEC 61851) entre carregador e veículo |",
+        "EV Charger GoodWe HCA G2 — Especificações Reais\n\n## Limite de rede / disjuntor de entrada\n\nO datasheet não especifica um \"limite de rede padrão\" fixo — isso é configurado\npor instalação, no registrador Modbus `Household Circuit Breaker Rated Current`\n(10026) e no parâmetro `Grid Power Limit` (10039, faixa 4,2–22,0 kW conforme o\nmodelo). Cada eletroposto GoodWe real tem seu próprio limite contratado/instalado\n— o ChargeGrid **nunca assume um valor padrão fixo entre instalações**: usa\nsempre o limite informado pelo operador na conversa para aquele site específico\nou, quando disponível, a leitura em tempo real desses registradores Modbus do\nequipamento em questão. Se nenhum dos dois estiver disponível, o assistente pede\no limite de rede daquele eletroposto em vez de presumir um número."
+      ],
+      "docs_recuperados": [
+        "tabelas_tarifarias",
+        "tabelas_tarifarias",
+        "tabelas_tarifarias",
+        "tabelas_tarifarias",
+        "mapa_modbus_hca_g2",
+        "manual_produto_goodwe_hca_g2"
+      ],
+      "docs_citados": [],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 1.12,
+      "tokens": 68,
+      "acerto_factual": null,
+      "recusou": true
+    },
+    {
+      "id": "X03",
+      "tipo": "recusa",
+      "pergunta": "Qual a melhor receita de bolo de chocolate?",
+      "resposta": "Pedido fora do domínio ChargeGrid/GoodWe (assunto bloqueado por escopo). Posso ajudar com orquestração de potência, faturamento ou diagnóstico de carregadores GoodWe.",
+      "contextos": [],
+      "docs_recuperados": [],
+      "docs_citados": [],
+      "fora_da_base": false,
+      "bloqueado": true,
+      "latencia_s": 0.01,
+      "tokens": 48,
+      "acerto_factual": null,
+      "recusou": true
+    }
+  ]
+}

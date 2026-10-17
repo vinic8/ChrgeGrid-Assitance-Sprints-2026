@@ -147,7 +147,7 @@ def _tabela_markdown(resultado: dict) -> str:
     lcel = resultado["resumo"]["lcel"]
     structured_lcel = f"{lcel['acuracia_structured_pct']}%" if lcel["acuracia_structured_pct"] is not None else "N/A"
     linhas = [
-        "| Métrica | Sprints 1/2 (versão manual/legado) | Sprint 03 (LCEL) |",
+        "| Métrica | Sprints 1/2 (versão manual/legado) | Versão atual (LCEL + RAG) |",
         "|---|---|---|",
         f"| Qualidade das respostas (nota no eval, 0-10) | {legado['nota']} | {lcel['nota']} |",
         f"| Tokens por turno (média) | {legado['tokens_por_turno']} | {lcel['tokens_por_turno']} |",

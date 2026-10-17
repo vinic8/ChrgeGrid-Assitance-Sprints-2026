@@ -1,0 +1,960 @@
+{
+  "rotulo": "it4",
+  "provider": "ollama",
+  "modelo": "gemma4:cloud",
+  "descricao": "Recuperação da it3 + prompt RAG v4 (resposta direta que retoma o sujeito da pergunta)",
+  "gerado_em": "2026-10-17T15:58:25",
+  "config": {
+    "chunking": "por_secao_tabelas",
+    "k": 5,
+    "prompt_rag": "v4",
+    "busca": "hibrida",
+    "limiar": 0.69,
+    "temperature": 0.0,
+    "top_p": 0.9,
+    "max_tokens": 800,
+    "embeddings": "fastembed/nomic-embed-text"
+  },
+  "resumo": {
+    "faithfulness_ragas": 0.902,
+    "answer_relevancy_ragas": 0.821,
+    "faithfulness_rubrica": 1.0,
+    "answer_relevancy_rubrica": 1.0,
+    "hit_documento_pct": 100.0,
+    "citacao_presente_pct": 100.0,
+    "citacao_correta_pct": 100.0,
+    "acerto_factual_pct": 100.0,
+    "recusa_indevida_pct": 0.0,
+    "recusa_correta_pct": 100.0,
+    "latencia_media_s": 2.202,
+    "tokens_medios": 952.095,
+    "erros": []
+  },
+  "itens": [
+    {
+      "id": "R01",
+      "tipo": "respondivel",
+      "pergunta": "O carregador C11 fez uma recarga das 18:30 às 19:00, com consumo de 5 kWh. Quanto fica o faturamento pela política tarifária?",
+      "resposta": "O faturamento da recarga no carregador C11 é de R$ 8,25. O ciclo ocorreu integralmente no posto tarifário 'Ponta' (18:00 às 20:59), com tarifa de R$ 1,65/kWh. Cálculo: 5 kWh × R$ 1,65 = R$ 8,25. Fonte: Tabelas Tarifárias — ChargeGrid Intelligence 2026, seção 1. Postos tarifários (horário local, todos os dias).",
+      "contextos": [
+        "[Tabelas Tarifárias — ChargeGrid Intelligence 2026 — 2. Ciclos que atravessam mais de um posto]\n2. Ciclos que atravessam mais de um posto\nSe o ciclo atravessar mais de um posto tarifário (ex.: início às 17:30 e fim às 19:00), o faturamento deve\nser proporcional ao consumo em cada posto. Quando a conversa não trouxer o consumo por sub-período, o assistente deve pedir o consumo segmentado em vez de aplicar uma tarifa única\narbitrariamente.",
+        "[Tabelas Tarifárias — ChargeGrid Intelligence 2026 — Introdução]\nTabelas Tarifárias — ChargeGrid Intelligence 2026\nNota de proveniência: esta política é ilustrativa, elaborada para o projeto ChargeGrid. Não é uma tarifa\nreal publicada pela GoodWe. A documentação oficial do HCA G2 confirma que o carregador já expõe um\nvalor monetário calculado no próprio equipamento (registrador Modbus 10061, \"Charge amount\"), o que\nmostra que aplicar uma política de tarifação sobre os dados do carregador é compatível com o hardware\nreal.\nA política substitui a tarifa fixa única por postos tarifários horários (time-of-use), refletindo o custo da\nenergia ao longo do dia, no mesmo princípio das tarifas branca e verde do setor elétrico brasileiro.",
+        "[FAQ de Carregamento — eletropostos GoodWe ChargeGrid — 1. Quanto tempo leva uma recarga completa?]\n1. Quanto tempo leva uma recarga completa?\nDepende da capacidade da bateria do veículo e da potência do carregador. Como referência de cálculo,\no tempo aproximado é a energia a recarregar dividida pela potência efetiva: 44 kWh num carregador de\n11 kW levam cerca de 4 horas. A potência efetiva também é limitada pelo carregador de bordo do\npróprio veículo e pelo controle de carga dinâmico do site.",
+        "[Tabelas Tarifárias — ChargeGrid Intelligence 2026 — 1. Postos tarifários (horário local, todos os dias)]\n1. Postos tarifários (horário local, todos os dias)\n| Posto | Horário | Tarifa (R$/ kWh) | Observação |\n| Fora de ponta (madrugada) | 00:00 às 06:59 | R$ 0,55 | Tarifa mais baixa, incentiva recarga noturna |\n| Fora de ponta (dia) | 07:00 às 17:59 | R$ 0,75 | Tarifa padrão diurna |\n| Ponta | 18:00 às 20:59 | R$ 1,65 | Horário de pico do sistema elétrico, tarifa mais alta |\n| Fora de ponta (noite) | 21:00 às 23:59 | R$ 0,75 | Retorno à tarifa padrão |\nExemplo de cálculo: um ciclo de 12 kWh das 02:00 às 04:00 cai inteiro no posto Fora de ponta\n(madrugada), então o faturamento é 12 kWh × R$ 0,55 = R$ 6,60.",
+        "[FAQ de Carregamento — eletropostos GoodWe ChargeGrid — 4. Como é calculado o valor da minha recarga?]\n4. Como é calculado o valor da minha recarga?\nNo eletroposto comercial, o valor é o consumo em kWh (meterStop menos meterStart) multiplicado pela\ntarifa do posto horário em que a recarga ocorreu, conforme as tabelas tarifárias. Veículos de frota\ncadastrada têm tarifa fixa. Em condomínios, vale o rateio definido no regimento condominial."
+      ],
+      "docs_recuperados": [
+        "tabelas_tarifarias",
+        "tabelas_tarifarias",
+        "faq_carregamento",
+        "tabelas_tarifarias",
+        "faq_carregamento"
+      ],
+      "secoes_recuperadas": [
+        "tabelas_tarifarias | 2. Ciclos que atravessam mais de um posto | 0.7107",
+        "tabelas_tarifarias | Introdução | 0.7319",
+        "faq_carregamento | 1. Quanto tempo leva uma recarga completa? | 0.7532",
+        "tabelas_tarifarias | 1. Postos tarifários (horário local, todos os dias) | 0.6976",
+        "faq_carregamento | 4. Como é calculado o valor da minha recarga? | 0.7087"
+      ],
+      "docs_citados": [
+        "tabelas_tarifarias"
+      ],
+      "citacoes": [
+        "Tabelas Tarifárias — ChargeGrid Intelligence 2026 — 1. Postos tarifários (horário local, todos os dias) (p. 1)"
+      ],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 3.86,
+      "tokens": 1152,
+      "ragas": {
+        "faithfulness": 0.5714285714285714,
+        "answer_relevancy": 0.7005632973933743
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta utiliza corretamente a tarifa do posto 'Ponta' (R$ 1,65) para o horário informado (18:30 às 19:00) e realiza o cálculo aritmético exato com base no consumo de 5 kWh."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "R02",
+      "tipo": "respondivel",
+      "pergunta": "O veículo FROTA-07 carregou 20 kWh às 19h. Qual tarifa aplicar e quanto cobrar?",
+      "resposta": "Para o veículo FROTA-07, deve-se aplicar a tarifa fixa preferencial de frota de R$ 0,70/kWh, que se sobrepõe à tabela de postos tarifários. O cálculo do faturamento é: 20 kWh × R$ 0,70 = R$ 14,00. Fonte: Tabelas Tarifárias — ChargeGrid Intelligence 2026, seção 3. Tarifa de frota.",
+      "contextos": [
+        "[Tabelas Tarifárias — ChargeGrid Intelligence 2026 — 3. Tarifa de frota]\n3. Tarifa de frota\nVeículos de frota cadastrada (ID começando com \"FROTA-\") pagam tarifa fixa preferencial de R$ 0,70/\nkWh, independente do posto horário, conforme contrato comercial. Essa regra se sobrepõe à tabela de\npostos tarifários.",
+        "[FAQ de Carregamento — eletropostos GoodWe ChargeGrid — 1. Quanto tempo leva uma recarga completa?]\n1. Quanto tempo leva uma recarga completa?\nDepende da capacidade da bateria do veículo e da potência do carregador. Como referência de cálculo,\no tempo aproximado é a energia a recarregar dividida pela potência efetiva: 44 kWh num carregador de\n11 kW levam cerca de 4 horas. A potência efetiva também é limitada pelo carregador de bordo do\npróprio veículo e pelo controle de carga dinâmico do site.",
+        "[Tabelas Tarifárias — ChargeGrid Intelligence 2026 — 6. Tarifa de ocupação ociosa]\n6. Tarifa de ocupação ociosa\nApós o fim da carga (status 04, carga completa), o veículo tem 15 minutos de tolerância para liberar a\nvaga. A partir daí, cobra-se R$ 0,50 por minuto de ocupação ociosa, limitado a R$ 30,00 por ciclo. A\ntarifa de ocupação não se aplica a vagas de condomínio residencial, que seguem o regimento\ncondominial.",
+        "[Tabelas Tarifárias — ChargeGrid Intelligence 2026 — 7. Regras de aplicação pelo ChargeGrid Assistant]\n7. Regras de aplicação pelo ChargeGrid Assistant\nAo calcular faturamento, o assistente deve: identificar o horário do ciclo e aplicar o posto tarifário correto\nda seção 1; aplicar a tarifa de frota quando o ID do veículo começar com \"FROTA-\"; nunca aplicar a\nsobretaxa de demanda sem que o operador informe uma leitura de potência acima do contratado; e, se a\ntarifa não puder ser determinada com segurança, perguntar o horário do ciclo em vez de assumir um\nvalor.",
+        "[Tabelas Tarifárias — ChargeGrid Intelligence 2026 — 1. Postos tarifários (horário local, todos os dias)]\n1. Postos tarifários (horário local, todos os dias)\n| Posto | Horário | Tarifa (R$/ kWh) | Observação |\n| Fora de ponta (madrugada) | 00:00 às 06:59 | R$ 0,55 | Tarifa mais baixa, incentiva recarga noturna |\n| Fora de ponta (dia) | 07:00 às 17:59 | R$ 0,75 | Tarifa padrão diurna |\n| Ponta | 18:00 às 20:59 | R$ 1,65 | Horário de pico do sistema elétrico, tarifa mais alta |\n| Fora de ponta (noite) | 21:00 às 23:59 | R$ 0,75 | Retorno à tarifa padrão |\nExemplo de cálculo: um ciclo de 12 kWh das 02:00 às 04:00 cai inteiro no posto Fora de ponta\n(madrugada), então o faturamento é 12 kWh × R$ 0,55 = R$ 6,60."
+      ],
+      "docs_recuperados": [
+        "tabelas_tarifarias",
+        "faq_carregamento",
+        "tabelas_tarifarias",
+        "tabelas_tarifarias",
+        "tabelas_tarifarias"
+      ],
+      "secoes_recuperadas": [
+        "tabelas_tarifarias | 3. Tarifa de frota | 0.7328",
+        "faq_carregamento | 1. Quanto tempo leva uma recarga completa? | 0.718",
+        "tabelas_tarifarias | 6. Tarifa de ocupação ociosa | 0.7153",
+        "tabelas_tarifarias | 7. Regras de aplicação pelo ChargeGrid Assistant | 0.671",
+        "tabelas_tarifarias | 1. Postos tarifários (horário local, todos os dias) | 0.672"
+      ],
+      "docs_citados": [
+        "tabelas_tarifarias"
+      ],
+      "citacoes": [
+        "Tabelas Tarifárias — ChargeGrid Intelligence 2026 — 3. Tarifa de frota (p. 1)"
+      ],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 2.35,
+      "tokens": 1061,
+      "ragas": {
+        "faithfulness": 0.75,
+        "answer_relevancy": 0.840097359363531
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta identifica corretamente a tarifa de frota (R$ 0,70/kWh) que se sobrepõe ao horário, realiza o cálculo exato com base nos dados da pergunta e cita a fonte correta."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "R03",
+      "tipo": "respondivel",
+      "pergunta": "No eletroposto comercial, a carga terminou às 14:00 e o motorista só tirou o carro às 14:45. Existe cobrança pela ocupação da vaga? Quanto?",
+      "resposta": "Sim, existe cobrança. No eletroposto comercial, há 15 minutos de tolerância após o fim da carga. Como o veículo permaneceu por 45 minutos (das 14:00 às 14:45), houve 30 minutos de ocupação ociosa. O cálculo é: 30 minutos × R$ 0,50/minuto = R$ 15,00. Fonte: FAQ de Carregamento — eletropostos GoodWe ChargeGrid, seção 5. Posso deixar o carro conectado depois que a carga terminar?; Tabelas Tarifárias — ChargeGrid Intelligence 2026, seção 6. Tarifa de ocupação ociosa.",
+      "contextos": [
+        "[FAQ de Carregamento — eletropostos GoodWe ChargeGrid — 5. Posso deixar o carro conectado depois que a carga terminar?]\n5. Posso deixar o carro conectado depois que a carga terminar?\nNo eletroposto comercial há 15 minutos de tolerância após o fim da carga; depois disso é cobrada a\ntarifa de ocupação ociosa. Em condomínio, o veículo deve ser retirado em até 30 minutos, sob pena de\nadvertência e multa previstas no regimento.",
+        "[Tabelas Tarifárias — ChargeGrid Intelligence 2026 — 6. Tarifa de ocupação ociosa]\n6. Tarifa de ocupação ociosa\nApós o fim da carga (status 04, carga completa), o veículo tem 15 minutos de tolerância para liberar a\nvaga. A partir daí, cobra-se R$ 0,50 por minuto de ocupação ociosa, limitado a R$ 30,00 por ciclo. A\ntarifa de ocupação não se aplica a vagas de condomínio residencial, que seguem o regimento\ncondominial.",
+        "[FAQ de Carregamento — eletropostos GoodWe ChargeGrid — 9. Como contestar uma cobrança?]\n9. Como contestar uma cobrança?\nAbra a contestação pelo app ou com o operador do eletroposto informando o ID do veículo, o carregador\ne o horário do ciclo. A cobrança fica congelada e o auditor responde em até 5 dias úteis.",
+        "[Regimento de Recarga Compartilhada em Condomínio — 5. Rateio e cobrança da energia]\n5. Rateio e cobrança da energia\nA energia de cada ciclo é medida pelo medidor do carregador e cobrada da unidade que fez a recarga,\njunto com a taxa condominial do mês seguinte, pela tarifa média da concessionária acrescida de 10%\npara manutenção dos equipamentos. Não se aplica a tarifa horária comercial nem a tarifa de ocupação\nociosa do eletroposto comercial.",
+        "[Regimento de Recarga Compartilhada em Condomínio — 4. Liberação da vaga após a recarga]\n4. Liberação da vaga após a recarga\nEncerrada a carga (status carga completa), o veículo deve ser retirado da vaga em até 30 minutos. A\npermanência além desse prazo é considerada ocupação indevida e sujeita às penalidades da seção 7. A\nvaga com carregador não pode ser usada como vaga de estacionamento comum."
+      ],
+      "docs_recuperados": [
+        "faq_carregamento",
+        "tabelas_tarifarias",
+        "faq_carregamento",
+        "regimento_recarga_condominial",
+        "regimento_recarga_condominial"
+      ],
+      "secoes_recuperadas": [
+        "faq_carregamento | 5. Posso deixar o carro conectado depois que a carga terminar? | 0.7768",
+        "tabelas_tarifarias | 6. Tarifa de ocupação ociosa | 0.7389",
+        "faq_carregamento | 9. Como contestar uma cobrança? | 0.7397",
+        "regimento_recarga_condominial | 5. Rateio e cobrança da energia | 0.6854",
+        "regimento_recarga_condominial | 4. Liberação da vaga após a recarga | 0.6792"
+      ],
+      "docs_citados": [
+        "faq_carregamento",
+        "tabelas_tarifarias"
+      ],
+      "citacoes": [
+        "FAQ de Carregamento — eletropostos GoodWe ChargeGrid — 5. Posso deixar o carro conectado depois que a carga terminar? (p. 1)",
+        "Tabelas Tarifárias — ChargeGrid Intelligence 2026 — 6. Tarifa de ocupação ociosa (p. 1)"
+      ],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 2.91,
+      "tokens": 912,
+      "ragas": {
+        "faithfulness": 0.5714285714285714,
+        "answer_relevancy": 0.7958331079375531
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta utiliza corretamente os dados de tolerância e tarifa dos trechos [1] e [2] para calcular o valor exato da cobrança solicitada na pergunta."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "R04",
+      "tipo": "respondivel",
+      "pergunta": "O carregador C08 retornou o código de exceção Modbus 0x0002 ao tentar ler um dado. O que isso significa e o que eu faço?",
+      "resposta": "O código de exceção Modbus 0x0002 significa 'Illegal Data Address', indicando que o endereço do registrador solicitado é inválido ou está fora do mapa suportado pelo modelo HCA G2. A ação imediata é conferir o endereço contra o mapa do HCA G2, onde os registradores válidos são 10000+, 10500+, 20000+ e 30000+. Fonte: Mapa Modbus RTU/RS485 — GoodWe HCA G2, seção 2. Códigos de exceção Modbus.",
+      "contextos": [
+        "[Mapa Modbus RTU/RS485 — GoodWe HCA G2 — 3. Códigos de falha do carregador (registradores 10001 a 10008)]\n3. Códigos de falha do carregador (registradores 10001 a 10008)\nDiferente dos códigos de exceção, estes são bits de status lidos via Modbus (\"AC Fault Bytes\") que\nindicam falhas reais do equipamento.\nRegistrador 10001 (AC Fault Bytes 01): bit0 parada de emergência acionada; bit1 sobretensão; bit2\nsobrecorrente; bit3 subtensão; bit4 falha no conector; bit5 S2 desconectado; bit6 sobretemperatura\nambiente; bit7 sobretemperatura do plugue de carga.\nRegistrador 10002 (AC Fault Bytes 02): bit0 falha de controle de acesso; bit1 falha de aterramento\n(grounding fault); bit2 timeout de handshake com o veículo; bit3 falha de comunicação com cartão RF;\nbit4 falha de comunicação com display serial; bit5 falha de comunicação com o medidor embarcado; bit6",
+        "[Mapa Modbus RTU/RS485 — GoodWe HCA G2 — 6. Uso desta referência pelo ChargeGrid Assistant]\n6. Uso desta referência pelo ChargeGrid Assistant\nQuando o operador reportar um código de exceção Modbus (0x0001 a 0x0004), use a tabela da seção 2.\nQuando reportar um comportamento do carregador (não responde, parou, alarme), mapeie para os bits\nde falha dos registradores 10001 a 10008 quando o sintoma bater e siga o checklist da seção 5. Nunca\ninvente um código de exceção ou de falha que não esteja neste mapa.",
+        "[Mapa Modbus RTU/RS485 — GoodWe HCA G2 — 2. Códigos de exceção Modbus]\n| 0x0003 | Illegal Data Value | Valor fora da faixa aceita pelo registrador (ex.: potência acima do limite do hardware) | Reduzir o valor ao intervalo permitido (ex.: 4,2 a 22,0 kW para Maximum Charging Power) |\n| 0x0004 | Slave Device Failure | Falha interna no carregador ao processar o comando | Reiniciar o carregador; se persistir, abrir chamado técnico |\nQualquer código fora desta tabela (ex.: um código de 2 dígitos como \"0B\") não consta no mapa Modbus\ndo HCA G2 e deve ser confirmado no equipamento.",
+        "[Mapa Modbus RTU/RS485 — GoodWe HCA G2 — 2. Códigos de exceção Modbus]\n2. Códigos de exceção Modbus\nEstes são erros de PROTOCOLO (a requisição Modbus em si é inválida), diferentes dos códigos de\nFALHA do equipamento (seção 3). O mapa oficial do HCA G2 define apenas 4 códigos de exceção:\n| Código | Nome | Causa provável | Ação imediata |\n| 0x0001 | Illegal Function | O controlador pediu uma função Modbus que o carregador não suporta (ex.: firmware desatualizado) | Verificar a versão de firmware do carregador |\n| 0x0002 | Illegal Data Address | Endereço de registrador inválido ou fora do mapa suportado por este modelo | Conferir o endereço contra o mapa do HCA G2 (registradores válidos: 10000+, 10500+, 20000+, 30000+) |",
+        "[Interoperabilidade OCPP — camada de tradução do ChargeGrid — 1. Mapeamento de conceitos OCPP para registradores Modbus]\n1. Mapeamento de conceitos OCPP para registradores Modbus\n| Conceito OCPP 1.6 | Dado Modbus GoodWe equivalente |\n| StatusNotification (estado do conector) | Registrador 10017 (Charging Station Status: ocioso, handshake, carregando, completo, alarme etc.) |\n| StatusNotification.errorCode | Bits de falha dos registradores 10001 a 10008 (ver \"Mapa Modbus HCA G2\") |\n| StartTransaction / meterStart | Início do ciclo: registrador 10170 (Meter Reading Before Charging, em 0,01 kWh) e 10158 a 10160 (Charging Start Time) |\n| StopTransaction / meterStop | Fim do ciclo: registrador 10172 (Meter Reading After Charging, em 0,01 kWh) e 10162 a 10164 (Charging End Time) |\n| StopTransaction.reason | Registrador 10168 (Reason for Charging Termination) |"
+      ],
+      "docs_recuperados": [
+        "mapa_modbus_hca_g2",
+        "mapa_modbus_hca_g2",
+        "mapa_modbus_hca_g2",
+        "mapa_modbus_hca_g2",
+        "interoperabilidade_ocpp"
+      ],
+      "secoes_recuperadas": [
+        "mapa_modbus_hca_g2 | 3. Códigos de falha do carregador (registradores 10001 a 10008) | 0.75",
+        "mapa_modbus_hca_g2 | 6. Uso desta referência pelo ChargeGrid Assistant | 0.7237",
+        "mapa_modbus_hca_g2 | 2. Códigos de exceção Modbus | 0.7244",
+        "mapa_modbus_hca_g2 | 2. Códigos de exceção Modbus | 0.7095",
+        "interoperabilidade_ocpp | 1. Mapeamento de conceitos OCPP para registradores Modbus | 0.6605"
+      ],
+      "docs_citados": [
+        "mapa_modbus_hca_g2"
+      ],
+      "citacoes": [
+        "Mapa Modbus RTU/RS485 — GoodWe HCA G2 — 2. Códigos de exceção Modbus (p. 1)"
+      ],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 2.48,
+      "tokens": 1405,
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.7625629515484529
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta extraiu com precisão o significado e a ação corretiva para o código 0x0002 conforme descrito no trecho [4]."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "R05",
+      "tipo": "respondivel",
+      "pergunta": "Em qual registrador e bit aparece a falha de aterramento do HCA G2, e qual a conduta?",
+      "resposta": "A falha de aterramento (grounding fault) do HCA G2 aparece no registrador 10002, bit1. A conduta técnica é interromper a operação e acionar um eletricista ou técnico habilitado antes de religar o equipamento, pois não é uma falha que se resolve à distância. Fonte: Mapa Modbus RTU/RS485 — GoodWe HCA G2, seções 3. Códigos de falha do carregador (registradores 10001 a 10008) e 5. Checklist de diagnóstico físico (RS485).",
+      "contextos": [
+        "[Mapa Modbus RTU/RS485 — GoodWe HCA G2 — 3. Códigos de falha do carregador (registradores 10001 a 10008)]\n3. Códigos de falha do carregador (registradores 10001 a 10008)\nDiferente dos códigos de exceção, estes são bits de status lidos via Modbus (\"AC Fault Bytes\") que\nindicam falhas reais do equipamento.\nRegistrador 10001 (AC Fault Bytes 01): bit0 parada de emergência acionada; bit1 sobretensão; bit2\nsobrecorrente; bit3 subtensão; bit4 falha no conector; bit5 S2 desconectado; bit6 sobretemperatura\nambiente; bit7 sobretemperatura do plugue de carga.\nRegistrador 10002 (AC Fault Bytes 02): bit0 falha de controle de acesso; bit1 falha de aterramento\n(grounding fault); bit2 timeout de handshake com o veículo; bit3 falha de comunicação com cartão RF;\nbit4 falha de comunicação com display serial; bit5 falha de comunicação com o medidor embarcado; bit6",
+        "[Mapa Modbus RTU/RS485 — GoodWe HCA G2 — 3. Códigos de falha do carregador (registradores 10001 a 10008)]\nbit4 falha de comunicação com display serial; bit5 falha de comunicação com o medidor embarcado; bit6\nfalha no relé de saída; bit7 falha na trava do plugue.\nRegistrador 10003 (AC Fault Bytes 03): bit0 curto-circuito na saída; bit1 falha de corrente de fuga; bit2\npausa de carregamento por mais de 10 min; bit3 leitura anômala do medidor; bit4 carregador offline ao\niniciar carga por PV/bateria; bit5 potência insuficiente ao iniciar carga por PV/bateria.\nRegistrador 10007 (falhas de hardware): bit0 falha na flash externa; bit1 falha na EEPROM; bit2 falha\nno dispositivo de detecção de vazamento; bit3 alimentação de entrada anormal; bit4 SN não registrado;\nbit5 parâmetros de fábrica anômalos; bit6 firmware não autorizado.",
+        "[Mapa Modbus RTU/RS485 — GoodWe HCA G2 — 3. Códigos de falha do carregador (registradores 10001 a 10008)]\nbit5 parâmetros de fábrica anômalos; bit6 firmware não autorizado.\nO registrador 10005 replica um subconjunto desses bits como alarmes (severidade menor, não\ninterrompem a carga), em vez de falhas (registradores 10001 a 10003).",
+        "[Mapa Modbus RTU/RS485 — GoodWe HCA G2 — 5. Checklist de diagnóstico físico (RS485)]\n5. Checklist de diagnóstico físico (RS485)\n•  Passo 1, conexão do cabo: verificar se os fios A/B não estão invertidos entre os dispositivos,\ncausa comum de falha de comunicação com inversor ou medidor.\n•  Passo 2, endereço Modbus duplicado: dois dispositivos com o mesmo endereço no mesmo\nbarramento causam colisão e leituras corrompidas.\n•  Passo 3, falha de aterramento (registrador 10002, bit1): interromper a operação e acionar\neletricista ou técnico habilitado antes de religar. Não é uma falha que se resolve à distância.\n•  Passo 4, reinício da sessão Modbus: reiniciar o driver/gateway Modbus sem desligar o carregador\ninteiro resolve a maioria dos travamentos de comunicação.\n•  Passo 5, power-cycle do carregador: último recurso antes de abrir chamado técnico.",
+        "[Mapa Modbus RTU/RS485 — GoodWe HCA G2 — 2. Códigos de exceção Modbus]\n| 0x0003 | Illegal Data Value | Valor fora da faixa aceita pelo registrador (ex.: potência acima do limite do hardware) | Reduzir o valor ao intervalo permitido (ex.: 4,2 a 22,0 kW para Maximum Charging Power) |\n| 0x0004 | Slave Device Failure | Falha interna no carregador ao processar o comando | Reiniciar o carregador; se persistir, abrir chamado técnico |\nQualquer código fora desta tabela (ex.: um código de 2 dígitos como \"0B\") não consta no mapa Modbus\ndo HCA G2 e deve ser confirmado no equipamento."
+      ],
+      "docs_recuperados": [
+        "mapa_modbus_hca_g2",
+        "mapa_modbus_hca_g2",
+        "mapa_modbus_hca_g2",
+        "mapa_modbus_hca_g2",
+        "mapa_modbus_hca_g2"
+      ],
+      "secoes_recuperadas": [
+        "mapa_modbus_hca_g2 | 3. Códigos de falha do carregador (registradores 10001 a 10008) | 0.757",
+        "mapa_modbus_hca_g2 | 3. Códigos de falha do carregador (registradores 10001 a 10008) | 0.7789",
+        "mapa_modbus_hca_g2 | 3. Códigos de falha do carregador (registradores 10001 a 10008) | 0.7731",
+        "mapa_modbus_hca_g2 | 5. Checklist de diagnóstico físico (RS485) | 0.6843",
+        "mapa_modbus_hca_g2 | 2. Códigos de exceção Modbus | 0.747"
+      ],
+      "docs_citados": [
+        "mapa_modbus_hca_g2",
+        "mapa_modbus_hca_g2"
+      ],
+      "citacoes": [
+        "Mapa Modbus RTU/RS485 — GoodWe HCA G2 — 3. Códigos de falha do carregador (registradores 10001 a 10008) (p. 1)",
+        "Mapa Modbus RTU/RS485 — GoodWe HCA G2 — 5. Checklist de diagnóstico físico (RS485) (p. 2)"
+      ],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 2.4,
+      "tokens": 1395,
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.8245316959786116
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta identifica corretamente o registrador, o bit e a conduta técnica, todos explicitamente mencionados nos trechos [1] e [4]."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "R06",
+      "tipo": "respondivel",
+      "pergunta": "Quais são os parâmetros de comunicação serial RS485 do carregador HCA G2?",
+      "resposta": "Os parâmetros de comunicação serial RS485 do carregador HCA G2 são:\n\n| Parâmetro | Valor |\n| :--- | :--- |\n| Baud rate | 9600 |\n| Bits de dados | 8 |\n| Bits de parada | 1 |\n| Paridade | N (nenhuma) |\n\nFonte: Mapa Modbus RTU/RS485 — GoodWe HCA G2, seção 1. Formato de comunicação serial (RS485).",
+      "contextos": [
+        "[Mapa Modbus RTU/RS485 — GoodWe HCA G2 — 1. Formato de comunicação serial (RS485)]\n1. Formato de comunicação serial (RS485)\n| Parâmetro | Valor |\n| Baud rate | 9600 |\n| Bits de dados | 8 |\n| Bits de parada | 1 |\n| Paridade | N (nenhuma) |",
+        "[Mapa Modbus RTU/RS485 — GoodWe HCA G2 — 3. Códigos de falha do carregador (registradores 10001 a 10008)]\nbit4 falha de comunicação com display serial; bit5 falha de comunicação com o medidor embarcado; bit6\nfalha no relé de saída; bit7 falha na trava do plugue.\nRegistrador 10003 (AC Fault Bytes 03): bit0 curto-circuito na saída; bit1 falha de corrente de fuga; bit2\npausa de carregamento por mais de 10 min; bit3 leitura anômala do medidor; bit4 carregador offline ao\niniciar carga por PV/bateria; bit5 potência insuficiente ao iniciar carga por PV/bateria.\nRegistrador 10007 (falhas de hardware): bit0 falha na flash externa; bit1 falha na EEPROM; bit2 falha\nno dispositivo de detecção de vazamento; bit3 alimentação de entrada anormal; bit4 SN não registrado;\nbit5 parâmetros de fábrica anômalos; bit6 firmware não autorizado.",
+        "[Mapa Modbus RTU/RS485 — GoodWe HCA G2 — 3. Códigos de falha do carregador (registradores 10001 a 10008)]\nbit5 parâmetros de fábrica anômalos; bit6 firmware não autorizado.\nO registrador 10005 replica um subconjunto desses bits como alarmes (severidade menor, não\ninterrompem a carga), em vez de falhas (registradores 10001 a 10003).",
+        "[Mapa Modbus RTU/RS485 — GoodWe HCA G2 — 3. Códigos de falha do carregador (registradores 10001 a 10008)]\n3. Códigos de falha do carregador (registradores 10001 a 10008)\nDiferente dos códigos de exceção, estes são bits de status lidos via Modbus (\"AC Fault Bytes\") que\nindicam falhas reais do equipamento.\nRegistrador 10001 (AC Fault Bytes 01): bit0 parada de emergência acionada; bit1 sobretensão; bit2\nsobrecorrente; bit3 subtensão; bit4 falha no conector; bit5 S2 desconectado; bit6 sobretemperatura\nambiente; bit7 sobretemperatura do plugue de carga.\nRegistrador 10002 (AC Fault Bytes 02): bit0 falha de controle de acesso; bit1 falha de aterramento\n(grounding fault); bit2 timeout de handshake com o veículo; bit3 falha de comunicação com cartão RF;\nbit4 falha de comunicação com display serial; bit5 falha de comunicação com o medidor embarcado; bit6",
+        "[Mapa Modbus RTU/RS485 — GoodWe HCA G2 — 5. Checklist de diagnóstico físico (RS485)]\n5. Checklist de diagnóstico físico (RS485)\n•  Passo 1, conexão do cabo: verificar se os fios A/B não estão invertidos entre os dispositivos,\ncausa comum de falha de comunicação com inversor ou medidor.\n•  Passo 2, endereço Modbus duplicado: dois dispositivos com o mesmo endereço no mesmo\nbarramento causam colisão e leituras corrompidas.\n•  Passo 3, falha de aterramento (registrador 10002, bit1): interromper a operação e acionar\neletricista ou técnico habilitado antes de religar. Não é uma falha que se resolve à distância.\n•  Passo 4, reinício da sessão Modbus: reiniciar o driver/gateway Modbus sem desligar o carregador\ninteiro resolve a maioria dos travamentos de comunicação.\n•  Passo 5, power-cycle do carregador: último recurso antes de abrir chamado técnico."
+      ],
+      "docs_recuperados": [
+        "mapa_modbus_hca_g2",
+        "mapa_modbus_hca_g2",
+        "mapa_modbus_hca_g2",
+        "mapa_modbus_hca_g2",
+        "mapa_modbus_hca_g2"
+      ],
+      "secoes_recuperadas": [
+        "mapa_modbus_hca_g2 | 1. Formato de comunicação serial (RS485) | 0.7979",
+        "mapa_modbus_hca_g2 | 3. Códigos de falha do carregador (registradores 10001 a 10008) | 0.7752",
+        "mapa_modbus_hca_g2 | 3. Códigos de falha do carregador (registradores 10001 a 10008) | 0.7639",
+        "mapa_modbus_hca_g2 | 3. Códigos de falha do carregador (registradores 10001 a 10008) | 0.7497",
+        "mapa_modbus_hca_g2 | 5. Checklist de diagnóstico físico (RS485) | 0.7259"
+      ],
+      "docs_citados": [
+        "mapa_modbus_hca_g2"
+      ],
+      "citacoes": [
+        "Mapa Modbus RTU/RS485 — GoodWe HCA G2 — 1. Formato de comunicação serial (RS485) (p. 1)"
+      ],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 2.27,
+      "tokens": 1278,
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.9344830190972137
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta extrai com precisão e completude os parâmetros de comunicação contidos no trecho [1], respondendo diretamente à pergunta."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "R07",
+      "tipo": "respondivel",
+      "pergunta": "O que a mensagem StopTransaction do OCPP registra e como isso vira consumo para faturamento?",
+      "resposta": "A mensagem StopTransaction do OCPP registra o meterStop (leitura do medidor após a carga) e o motivo do encerramento da sessão. No hardware GoodWe HCA G2, esses dados correspondem ao registrador Modbus 10172 (Meter Reading After Charging, em 0,01 kWh) e ao registrador 10168 (Reason for Charging Termination). Para o faturamento, o consumo é calculado subtraindo o meterStart (registrador 10170) do meterStop (registrador 10172); como os valores são expressos em 0,01 kWh, a diferença bruta deve ser dividida por 100 para obter o valor final em kWh. Fonte: Interoperabilidade OCPP — camada de tradução do ChargeGrid, seções 1 e 2.",
+      "contextos": [
+        "[Interoperabilidade OCPP — camada de tradução do ChargeGrid — 1. Mapeamento de conceitos OCPP para registradores Modbus]\n| StopTransaction.reason | Registrador 10168 (Reason for Charging Termination) |\n| MeterValues (leituras intermediárias) | Registradores 10015 (Charging power) e 10016 (Charging Capacity, consumo do ciclo em andamento) |\n| Authorize | Registrador 10076 (Charge starting mode: cartão RFID, app, VIN, plug-and- charge) |\n| Valor a faturar do ciclo | Registrador 10061 (Charge amount, disponível em modo de operação) |",
+        "[Interoperabilidade OCPP — camada de tradução do ChargeGrid — 2. Ciclo de sessão e cálculo do consumo]\n2. Ciclo de sessão e cálculo do consumo\nUm ciclo de recarga começa com StartTransaction, que registra o meterStart (leitura do medidor antes\nda carga), e termina com StopTransaction, que registra o meterStop (leitura do medidor depois da carga)\ne o motivo do encerramento. O consumo faturável do ciclo é sempre meterStop menos meterStart, em\nkWh. Como os registradores 10170 e 10172 são expressos em 0,01 kWh, a diferença bruta deve ser\ndividida por 100 para obter kWh. Exemplo: meterStart = 152300 e meterStop = 154100 resultam em\n1800 unidades, ou seja, 18,00 kWh.",
+        "[Interoperabilidade OCPP — camada de tradução do ChargeGrid — 1. Mapeamento de conceitos OCPP para registradores Modbus]\n1. Mapeamento de conceitos OCPP para registradores Modbus\n| Conceito OCPP 1.6 | Dado Modbus GoodWe equivalente |\n| StatusNotification (estado do conector) | Registrador 10017 (Charging Station Status: ocioso, handshake, carregando, completo, alarme etc.) |\n| StatusNotification.errorCode | Bits de falha dos registradores 10001 a 10008 (ver \"Mapa Modbus HCA G2\") |\n| StartTransaction / meterStart | Início do ciclo: registrador 10170 (Meter Reading Before Charging, em 0,01 kWh) e 10158 a 10160 (Charging Start Time) |\n| StopTransaction / meterStop | Fim do ciclo: registrador 10172 (Meter Reading After Charging, em 0,01 kWh) e 10162 a 10164 (Charging End Time) |\n| StopTransaction.reason | Registrador 10168 (Reason for Charging Termination) |",
+        "[Interoperabilidade OCPP — camada de tradução do ChargeGrid — 4. Uso desta referência pelo ChargeGrid Assistant]\n4. Uso desta referência pelo ChargeGrid Assistant\nAo explicar o ciclo de sessão, prefira citar o registrador Modbus real (fonte de verdade) e, se o operador\nperguntar em termos OCPP (ex.: \"o que é StopTransaction\"), use a tabela da seção 1 para traduzir,\ndeixando claro, se perguntado diretamente, que o HCA G2 fala Modbus nativamente e o OCPP é a\ncamada de interoperabilidade do ChargeGrid.",
+        "[Tabelas Tarifárias — ChargeGrid Intelligence 2026 — 2. Ciclos que atravessam mais de um posto]\n2. Ciclos que atravessam mais de um posto\nSe o ciclo atravessar mais de um posto tarifário (ex.: início às 17:30 e fim às 19:00), o faturamento deve\nser proporcional ao consumo em cada posto. Quando a conversa não trouxer o consumo por sub-período, o assistente deve pedir o consumo segmentado em vez de aplicar uma tarifa única\narbitrariamente."
+      ],
+      "docs_recuperados": [
+        "interoperabilidade_ocpp",
+        "interoperabilidade_ocpp",
+        "interoperabilidade_ocpp",
+        "interoperabilidade_ocpp",
+        "tabelas_tarifarias"
+      ],
+      "secoes_recuperadas": [
+        "interoperabilidade_ocpp | 1. Mapeamento de conceitos OCPP para registradores Modbus | 0.7159",
+        "interoperabilidade_ocpp | 2. Ciclo de sessão e cálculo do consumo | 0.707",
+        "interoperabilidade_ocpp | 1. Mapeamento de conceitos OCPP para registradores Modbus | 0.697",
+        "interoperabilidade_ocpp | 4. Uso desta referência pelo ChargeGrid Assistant | 0.6931",
+        "tabelas_tarifarias | 2. Ciclos que atravessam mais de um posto | 0.6488"
+      ],
+      "docs_citados": [
+        "interoperabilidade_ocpp",
+        "interoperabilidade_ocpp",
+        "interoperabilidade_ocpp"
+      ],
+      "citacoes": [
+        "Interoperabilidade OCPP — camada de tradução do ChargeGrid — 1. Mapeamento de conceitos OCPP para registradores Modbus (p. 1)",
+        "Interoperabilidade OCPP — camada de tradução do ChargeGrid — 2. Ciclo de sessão e cálculo do consumo (p. 1)",
+        "Interoperabilidade OCPP — camada de tradução do ChargeGrid — 1. Mapeamento de conceitos OCPP para registradores Modbus (p. 1)"
+      ],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 2.85,
+      "tokens": 1217,
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.7861448128659875
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta extrai com precisão as informações de registro e o cálculo de consumo descritos nos trechos [2] e [3], respondendo integralmente à pergunta."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "R08",
+      "tipo": "respondivel",
+      "pergunta": "Um ciclo teve meterStart = 204500 e meterStop = 207250 nos registradores do HCA G2. Qual foi o consumo em kWh?",
+      "resposta": "O consumo do ciclo foi de 27,50 kWh. O cálculo é realizado subtraindo o meterStart do meterStop (207250 - 204500 = 2750 unidades) e dividindo o resultado por 100, conforme a especificação dos registradores 10170 e 10172. Fonte: Interoperabilidade OCPP — camada de tradução do ChargeGrid, seção 2. Ciclo de sessão e cálculo do consumo.",
+      "contextos": [
+        "[Interoperabilidade OCPP — camada de tradução do ChargeGrid — 2. Ciclo de sessão e cálculo do consumo]\n2. Ciclo de sessão e cálculo do consumo\nUm ciclo de recarga começa com StartTransaction, que registra o meterStart (leitura do medidor antes\nda carga), e termina com StopTransaction, que registra o meterStop (leitura do medidor depois da carga)\ne o motivo do encerramento. O consumo faturável do ciclo é sempre meterStop menos meterStart, em\nkWh. Como os registradores 10170 e 10172 são expressos em 0,01 kWh, a diferença bruta deve ser\ndividida por 100 para obter kWh. Exemplo: meterStart = 152300 e meterStop = 154100 resultam em\n1800 unidades, ou seja, 18,00 kWh.",
+        "[Manual Operacional ChargeGrid / EV ChargeOps — 5. Encerramento e registro do ciclo]\n5. Encerramento e registro do ciclo\nNo encerramento, o operador registra para auditoria: ID do veículo, ID do carregador, horário de início,\nhorário de fim, leitura inicial e final do medidor (meterStart e meterStop), consumo em kWh e motivo do\nencerramento (registrador 10168). O registro do ciclo é obrigatório mesmo quando a tarifa ainda não foi\ndefinida; nesse caso o faturamento fica pendente.",
+        "[Mapa Modbus RTU/RS485 — GoodWe HCA G2 — 4. Registradores operacionais]\n4. Registradores operacionais\n| Registrador |  | Nome |  |  | Uso |  |\n| 10017 |  | Charging Station Status |  |  | 00 ocioso sem plugue; 01 ocioso com plugue; 02 handshake com veículo; 03 carregando; 04 carga completa; 05 alarme; 06 início agendado; 07 manutenção; 08 falha ao iniciar; 09 atualizando firmware; 10 interrompido (PV/ bateria insuficiente) |  |\n|  |  |  |  |  |  |  |\n|  |  |  |  |  |  |  |\n| 10026 |  | Household circuit breaker rated current |  |  | Corrente nominal do disjuntor de entrada: fonte real do \"Limite da Rede\" |  |\n| 10029 |  | Maximum Charging Power |  |  | Potência máxima configurada (4,2 a 22,0 kW conforme o modelo) |  |\n| 10039 |  | Maximum Grid Electricity Draw Power |  |  | Limite de compra da rede (Grid Power Limit), usado pelo controle de carga dinâmico |  |",
+        "[Manual de Produto — EV Charger GoodWe HCA G2 — 4. Dados gerais]\n4. Dados gerais\n| Item | Valor |\n| Temperatura operacional | -30 °C a +50 °C (carregador); plugue até 50 °C |\n| Umidade relativa | 5% a 95%, sem condensação |\n| Altitude operacional máxima | 2000 m |\n| Grau de proteção | IP66 (carregador) / IP55 (plugue de carregamento) |\n| Conector | IEC Tipo 2 |\n| Cabo de saída | 6 m (7,5 m opcional) |\n| Ruído emitido | menor que 20 dB |\n| Consumo em espera | menor que 6,5 W |\nModos de partida\nApp (SolarGo/SEMS), cartão RFID, início automático ao conectar\n| Modos de operação | Carregamento rápido, Prioridade solar, PV + bateria, agendamento, controle de carga dinâmico |\n| Instalação | Interior ou exterior, parede ou piso/poste |\n| Certificações | IEC61851-1, IEC62311, IEC62955, AS/NZS 4268:2017, IEC61008-1 |",
+        "[Tabelas Tarifárias — ChargeGrid Intelligence 2026 — 1. Postos tarifários (horário local, todos os dias)]\n1. Postos tarifários (horário local, todos os dias)\n| Posto | Horário | Tarifa (R$/ kWh) | Observação |\n| Fora de ponta (madrugada) | 00:00 às 06:59 | R$ 0,55 | Tarifa mais baixa, incentiva recarga noturna |\n| Fora de ponta (dia) | 07:00 às 17:59 | R$ 0,75 | Tarifa padrão diurna |\n| Ponta | 18:00 às 20:59 | R$ 1,65 | Horário de pico do sistema elétrico, tarifa mais alta |\n| Fora de ponta (noite) | 21:00 às 23:59 | R$ 0,75 | Retorno à tarifa padrão |\nExemplo de cálculo: um ciclo de 12 kWh das 02:00 às 04:00 cai inteiro no posto Fora de ponta\n(madrugada), então o faturamento é 12 kWh × R$ 0,55 = R$ 6,60."
+      ],
+      "docs_recuperados": [
+        "interoperabilidade_ocpp",
+        "manual_operacional_ev_chargeops",
+        "mapa_modbus_hca_g2",
+        "manual_produto_goodwe_hca_g2",
+        "tabelas_tarifarias"
+      ],
+      "secoes_recuperadas": [
+        "interoperabilidade_ocpp | 2. Ciclo de sessão e cálculo do consumo | 0.8008",
+        "manual_operacional_ev_chargeops | 5. Encerramento e registro do ciclo | 0.6917",
+        "mapa_modbus_hca_g2 | 4. Registradores operacionais | 0.743",
+        "manual_produto_goodwe_hca_g2 | 4. Dados gerais | 0.7462",
+        "tabelas_tarifarias | 1. Postos tarifários (horário local, todos os dias) | 0.6998"
+      ],
+      "docs_citados": [
+        "interoperabilidade_ocpp"
+      ],
+      "citacoes": [
+        "Interoperabilidade OCPP — camada de tradução do ChargeGrid — 2. Ciclo de sessão e cálculo do consumo (p. 1)"
+      ],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 2.42,
+      "tokens": 1446,
+      "ragas": {
+        "faithfulness": 0.6,
+        "answer_relevancy": 0.6461715447404113
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta calcula corretamente o consumo com base na fórmula e no fator de divisão (100) descritos no trecho [1], respondendo diretamente à pergunta."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "R09",
+      "tipo": "respondivel",
+      "pergunta": "Quais modelos existem na linha GoodWe HCA G2 e qual a potência de cada um?",
+      "resposta": "A linha GoodWe HCA G2 possui três modelos com as seguintes potências nominais:\n\n| Modelo | Potência nominal |\n| :--- | :--- |\n| GW7K-HCA-20 | 7 kW |\n| GW11K-HCA-20 | 11 kW |\n| GW22K-HCA-20 | 22 kW |\n\nFonte: Manual de Produto — EV Charger GoodWe HCA G2, seção 1. Modelos da linha HCA G2.",
+      "contextos": [
+        "[Manual de Produto — EV Charger GoodWe HCA G2 — 1. Modelos da linha HCA G2]\n1. Modelos da linha HCA G2\nA linha HCA G2 tem 3 modelos por potência nominal (não é um único modelo com potência ajustável em\nfaixa livre):\n| Modelo | Fases | Potência nominal | Corrente nominal | Tensão de entrada |\n| GW7K-HCA-20 | Monofásico | 7 kW | 32 A | 220 V (L/N/PE) |\n| GW11K-HCA-20 | Trifásico | 11 kW | 16 A | 380 V (3L/N/PE) |\n| GW22K-HCA-20 | Trifásico | 22 kW | 32 A | 380 V (3L/N/PE) |\nNão existem outros modelos na linha HCA G2 além desses três (por exemplo, não há um modelo de 30\nkW ou de corrente contínua nesta linha).\nFaixa de ajuste de potência de carregamento (registrador Modbus Maximum Charging Power): 4,2\nkW a 22,0 kW, respeitando o máximo do modelo instalado.",
+        "[Manual de Produto — EV Charger GoodWe HCA G2 — 7. Uso desta referência pelo ChargeGrid Assistant]\n7. Uso desta referência pelo ChargeGrid Assistant\nAo orientar sobre limite de potência, cite o registrador Household Circuit Breaker Rated\nCurrent ou Grid Power Limit como fonte real do dado quando o operador mencionar leitura do\nequipamento. Nunca aplique um valor de referência fixo entre instalações e nunca informe uma\nespecificação (potência, corrente, certificação, garantia, preço) que não esteja listada neste manual.",
+        "[FAQ de Carregamento — eletropostos GoodWe ChargeGrid — 2. Meu veículo é compatível com o carregador GoodWe HCA G2?]\n2. Meu veículo é compatível com o carregador GoodWe HCA G2?\nO HCA G2 usa conector IEC Tipo 2 com cabo de 6 m (7,5 m opcional). Veículos com entrada Tipo 2\nconectam diretamente. Veículos com outros padrões de entrada precisam de adaptador certificado pelo\nfabricante do veículo.",
+        "[Manual de Produto — EV Charger GoodWe HCA G2 — 5. Limite de rede e disjuntor de entrada]\n5. Limite de rede e disjuntor de entrada\n| Power Limit ( | 10039, faixa | de 4,2 a 22,0 kW | conforme o modelo | ). Cada eletroposto |",
+        "[Manual de Produto — EV Charger GoodWe HCA G2 — Introdução]\nManual de Produto — EV Charger GoodWe HCA G2\nFonte: \"GW_HCA-G2_Datasheet-PT.pdf\" e \"GW_HCA-G2_User-Manual-PT.pdf\" (fabricante, 2025).\nTodos os valores deste documento vêm do datasheet e do manual oficiais da GoodWe. Qualquer\nespecificação que não esteja listada aqui NÃO foi confirmada pelo fabricante e não deve ser presumida."
+      ],
+      "docs_recuperados": [
+        "manual_produto_goodwe_hca_g2",
+        "manual_produto_goodwe_hca_g2",
+        "faq_carregamento",
+        "manual_produto_goodwe_hca_g2",
+        "manual_produto_goodwe_hca_g2"
+      ],
+      "secoes_recuperadas": [
+        "manual_produto_goodwe_hca_g2 | 1. Modelos da linha HCA G2 | 0.8057",
+        "manual_produto_goodwe_hca_g2 | 7. Uso desta referência pelo ChargeGrid Assistant | 0.7215",
+        "faq_carregamento | 2. Meu veículo é compatível com o carregador GoodWe HCA G2? | 0.7242",
+        "manual_produto_goodwe_hca_g2 | 5. Limite de rede e disjuntor de entrada | 0.7077",
+        "manual_produto_goodwe_hca_g2 | Introdução | 0.7109"
+      ],
+      "docs_citados": [
+        "manual_produto_goodwe_hca_g2"
+      ],
+      "citacoes": [
+        "Manual de Produto — EV Charger GoodWe HCA G2 — 1. Modelos da linha HCA G2 (p. 1)"
+      ],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 2.35,
+      "tokens": 1016,
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.8878639322209941
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta extraiu com precisão os modelos e potências listados no Trecho [1], respondendo diretamente a todos os pontos da pergunta."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "R10",
+      "tipo": "respondivel",
+      "pergunta": "O carregador HCA G2 pode ficar instalado ao ar livre? Qual o grau de proteção?",
+      "resposta": "O carregador HCA G2 pode ser instalado em ambiente exterior (ao ar livre), possuindo grau de proteção IP66 para o carregador e IP55 para o plugue de carregamento. Fonte: Manual de Produto — EV Charger GoodWe HCA G2, seção 4. Dados gerais.",
+      "contextos": [
+        "[Manual de Produto — EV Charger GoodWe HCA G2 — 3. Proteções elétricas integradas]\n3. Proteções elétricas integradas\nCorrente residual (RCD) 30 mA CA + 6 mA CC, sobrecorrente, sobretensão, subtensão, falha de\naterramento, surto CA (SPD Tipo III), sobretemperatura e desligamento de emergência (botão físico).\nUm RCD/RCBO externo tipo A ainda é exigido na instalação: o carregador não substitui a proteção do\ncircuito.",
+        "[Manual de Produto — EV Charger GoodWe HCA G2 — 4. Dados gerais]\n4. Dados gerais\n| Item | Valor |\n| Temperatura operacional | -30 °C a +50 °C (carregador); plugue até 50 °C |\n| Umidade relativa | 5% a 95%, sem condensação |\n| Altitude operacional máxima | 2000 m |\n| Grau de proteção | IP66 (carregador) / IP55 (plugue de carregamento) |\n| Conector | IEC Tipo 2 |\n| Cabo de saída | 6 m (7,5 m opcional) |\n| Ruído emitido | menor que 20 dB |\n| Consumo em espera | menor que 6,5 W |\nModos de partida\nApp (SolarGo/SEMS), cartão RFID, início automático ao conectar\n| Modos de operação | Carregamento rápido, Prioridade solar, PV + bateria, agendamento, controle de carga dinâmico |\n| Instalação | Interior ou exterior, parede ou piso/poste |\n| Certificações | IEC61851-1, IEC62311, IEC62955, AS/NZS 4268:2017, IEC61008-1 |",
+        "[FAQ de Carregamento — eletropostos GoodWe ChargeGrid — 2. Meu veículo é compatível com o carregador GoodWe HCA G2?]\n2. Meu veículo é compatível com o carregador GoodWe HCA G2?\nO HCA G2 usa conector IEC Tipo 2 com cabo de 6 m (7,5 m opcional). Veículos com entrada Tipo 2\nconectam diretamente. Veículos com outros padrões de entrada precisam de adaptador certificado pelo\nfabricante do veículo.",
+        "[Manual de Produto — EV Charger GoodWe HCA G2 — 1. Modelos da linha HCA G2]\n1. Modelos da linha HCA G2\nA linha HCA G2 tem 3 modelos por potência nominal (não é um único modelo com potência ajustável em\nfaixa livre):\n| Modelo | Fases | Potência nominal | Corrente nominal | Tensão de entrada |\n| GW7K-HCA-20 | Monofásico | 7 kW | 32 A | 220 V (L/N/PE) |\n| GW11K-HCA-20 | Trifásico | 11 kW | 16 A | 380 V (3L/N/PE) |\n| GW22K-HCA-20 | Trifásico | 22 kW | 32 A | 380 V (3L/N/PE) |\nNão existem outros modelos na linha HCA G2 além desses três (por exemplo, não há um modelo de 30\nkW ou de corrente contínua nesta linha).\nFaixa de ajuste de potência de carregamento (registrador Modbus Maximum Charging Power): 4,2\nkW a 22,0 kW, respeitando o máximo do modelo instalado.",
+        "[Mapa Modbus RTU/RS485 — GoodWe HCA G2 — Introdução]\nMapa Modbus RTU/RS485 — GoodWe HCA G2\nFonte: \"Mapa MODBUS_HCA G2.pdf\" (protocolo Modbus da 2a geração do carregador CA GoodWe,\nv1.0.15) e \"GW_HCA-G2_Datasheet-PT.pdf\". Os dados abaixo vêm do documento oficial do fabricante."
+      ],
+      "docs_recuperados": [
+        "manual_produto_goodwe_hca_g2",
+        "manual_produto_goodwe_hca_g2",
+        "faq_carregamento",
+        "manual_produto_goodwe_hca_g2",
+        "mapa_modbus_hca_g2"
+      ],
+      "secoes_recuperadas": [
+        "manual_produto_goodwe_hca_g2 | 3. Proteções elétricas integradas | 0.7189",
+        "manual_produto_goodwe_hca_g2 | 4. Dados gerais | 0.6976",
+        "faq_carregamento | 2. Meu veículo é compatível com o carregador GoodWe HCA G2? | 0.7035",
+        "manual_produto_goodwe_hca_g2 | 1. Modelos da linha HCA G2 | 0.6833",
+        "mapa_modbus_hca_g2 | Introdução | 0.6984"
+      ],
+      "docs_citados": [
+        "manual_produto_goodwe_hca_g2"
+      ],
+      "citacoes": [
+        "Manual de Produto — EV Charger GoodWe HCA G2 — 4. Dados gerais (p. 1)"
+      ],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 2.05,
+      "tokens": 1148,
+      "ragas": {
+        "faithfulness": 0.75,
+        "answer_relevancy": 0.8077792750032594
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta respondeu a ambas as perguntas de forma direta e completa, utilizando exclusivamente as informações contidas no trecho [2]."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "R11",
+      "tipo": "respondivel",
+      "pergunta": "O carregador GoodWe HCA G2 suporta OCPP nativamente?",
+      "resposta": "O carregador GoodWe HCA G2 não suporta OCPP nativamente; o protocolo declarado é Modbus TCP (backend) e Modbus RTU/RS485 (local). O ChargeGrid atua como uma camada de tradução e interoperabilidade que expõe os dados do Modbus em vocabulário OCPP 1.6 para integração com sistemas de terceiros. Fonte: Interoperabilidade OCPP — camada de tradução do ChargeGrid, seção Introdução; Manual de Produto — EV Charger GoodWe HCA G2, seção 2. Comunicação e protocolos.",
+      "contextos": [
+        "[Interoperabilidade OCPP — camada de tradução do ChargeGrid — Introdução]\nInteroperabilidade OCPP — camada de tradução do\nChargeGrid\nNota de proveniência: a documentação oficial da GoodWe (datasheet e manual do HCA G2) confirma\nque o carregador não fala OCPP nativamente. O protocolo declarado é Modbus TCP (backend) mais\nModbus RTU/RS485 (local, com inversor e medidor MID), integrado ao ecossistema GoodWe (SEMS\nPortal e SolarGo). O ChargeGrid atua como uma camada de tradução e interoperabilidade que expõe\nos dados reais do Modbus GoodWe em vocabulário OCPP 1.6, para integração com sistemas de gestão\nde frota e CSMS de terceiros, sem que o carregador físico execute OCPP.",
+        "[FAQ de Carregamento — eletropostos GoodWe ChargeGrid — 2. Meu veículo é compatível com o carregador GoodWe HCA G2?]\n2. Meu veículo é compatível com o carregador GoodWe HCA G2?\nO HCA G2 usa conector IEC Tipo 2 com cabo de 6 m (7,5 m opcional). Veículos com entrada Tipo 2\nconectam diretamente. Veículos com outros padrões de entrada precisam de adaptador certificado pelo\nfabricante do veículo.",
+        "[Manual de Produto — EV Charger GoodWe HCA G2 — 2. Comunicação e protocolos]\n2. Comunicação e protocolos\n•  Protocolo de comunicação declarado no datasheet: Modbus TCP.\n•  Portas físicas: Bluetooth, Wi-Fi, RS485 (duas portas — uma para o inversor, outra para o medidor\nMID) e LAN (para o roteador e a nuvem SEMS).\n•  OCPP não é nativo: o datasheet e o manual do HCA G2 NÃO mencionam OCPP em nenhum\nmomento. O ecossistema nativo da GoodWe é RS485/Modbus (local, com inversor e medidor\nMID) mais Modbus TCP e nuvem SEMS (app SolarGo e SEMS Portal). O ChargeGrid trata OCPP\ncomo uma camada de tradução e interoperabilidade sobre os dados reais do Modbus — ver o\ndocumento \"Interoperabilidade OCPP\".",
+        "[Mapa Modbus RTU/RS485 — GoodWe HCA G2 — Introdução]\nMapa Modbus RTU/RS485 — GoodWe HCA G2\nFonte: \"Mapa MODBUS_HCA G2.pdf\" (protocolo Modbus da 2a geração do carregador CA GoodWe,\nv1.0.15) e \"GW_HCA-G2_Datasheet-PT.pdf\". Os dados abaixo vêm do documento oficial do fabricante.",
+        "[Mapa Modbus RTU/RS485 — GoodWe HCA G2 — 2. Códigos de exceção Modbus]\n| 0x0003 | Illegal Data Value | Valor fora da faixa aceita pelo registrador (ex.: potência acima do limite do hardware) | Reduzir o valor ao intervalo permitido (ex.: 4,2 a 22,0 kW para Maximum Charging Power) |\n| 0x0004 | Slave Device Failure | Falha interna no carregador ao processar o comando | Reiniciar o carregador; se persistir, abrir chamado técnico |\nQualquer código fora desta tabela (ex.: um código de 2 dígitos como \"0B\") não consta no mapa Modbus\ndo HCA G2 e deve ser confirmado no equipamento."
+      ],
+      "docs_recuperados": [
+        "interoperabilidade_ocpp",
+        "faq_carregamento",
+        "manual_produto_goodwe_hca_g2",
+        "mapa_modbus_hca_g2",
+        "mapa_modbus_hca_g2"
+      ],
+      "secoes_recuperadas": [
+        "interoperabilidade_ocpp | Introdução | 0.7579",
+        "faq_carregamento | 2. Meu veículo é compatível com o carregador GoodWe HCA G2? | 0.7788",
+        "manual_produto_goodwe_hca_g2 | 2. Comunicação e protocolos | 0.7298",
+        "mapa_modbus_hca_g2 | Introdução | 0.7402",
+        "mapa_modbus_hca_g2 | 2. Códigos de exceção Modbus | 0.7261"
+      ],
+      "docs_citados": [
+        "interoperabilidade_ocpp",
+        "manual_produto_goodwe_hca_g2"
+      ],
+      "citacoes": [
+        "Interoperabilidade OCPP — camada de tradução do ChargeGrid — Introdução (p. 1)",
+        "Manual de Produto — EV Charger GoodWe HCA G2 — 2. Comunicação e protocolos (p. 1)"
+      ],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 2.35,
+      "tokens": 1088,
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.9060919184357851
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta nega o suporte nativo ao OCPP e explica a função do ChargeGrid, baseando-se integralmente nos trechos [1] e [3]."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "R12",
+      "tipo": "respondivel",
+      "pergunta": "No condomínio, em quanto tempo o morador precisa tirar o carro da vaga depois que a recarga termina?",
+      "resposta": "No condomínio, o veículo deve ser retirado da vaga em até 30 minutos após a recarga ser encerrada (status carga completa). Fonte: Regimento de Recarga Compartilhada em Condomínio, seção 4. Liberação da vaga após a recarga.",
+      "contextos": [
+        "[Regimento de Recarga Compartilhada em Condomínio — 3. Agendamento e tempo máximo de uso]\n3. Agendamento e tempo máximo de uso\nAs vagas com carregador são reservadas pelo app com até 48 horas de antecedência. Cada reserva\ntem duração máxima de 4 horas por dia por unidade. A reserva não utilizada em até 20 minutos após o\nhorário marcado é cancelada automaticamente e a vaga volta a ficar disponível.",
+        "[Regimento de Recarga Compartilhada em Condomínio — 8. Instalação de carregador individual na vaga privativa]\n8. Instalação de carregador individual na vaga privativa\nO morador pode solicitar a instalação de carregador individual na própria vaga, às suas custas, mediante\nprojeto elétrico assinado por profissional habilitado e aprovação do síndico. A instalação deve respeitar a\ncapacidade do quadro geral do condomínio e usar controle de carga dinâmico para não ultrapassar o\nlimite de rede do prédio.",
+        "[Regimento de Recarga Compartilhada em Condomínio — 4. Liberação da vaga após a recarga]\n4. Liberação da vaga após a recarga\nEncerrada a carga (status carga completa), o veículo deve ser retirado da vaga em até 30 minutos. A\npermanência além desse prazo é considerada ocupação indevida e sujeita às penalidades da seção 7. A\nvaga com carregador não pode ser usada como vaga de estacionamento comum.",
+        "[Regimento de Recarga Compartilhada em Condomínio — 2. Cadastro e acesso]\n2. Cadastro e acesso\nPara usar a recarga compartilhada, o morador deve cadastrar a unidade, a placa do veículo e um cartão\nRFID na administração. Cada unidade pode cadastrar no máximo 2 veículos. Visitantes só podem\nrecarregar com autorização prévia do morador responsável, que assume o custo da recarga.",
+        "[Regimento de Recarga Compartilhada em Condomínio — 7. Penalidades]\n7. Penalidades\nA ocupação indevida da vaga (seção 4) gera advertência por escrito na primeira ocorrência e multa de\n10% da taxa condominial a partir da segunda ocorrência no mesmo semestre. Três ocorrências no\nsemestre suspendem o acesso da unidade à recarga compartilhada por 30 dias. O uso de equipamento\nproibido (seção 6) gera multa imediata de 20% da taxa condominial."
+      ],
+      "docs_recuperados": [
+        "regimento_recarga_condominial",
+        "regimento_recarga_condominial",
+        "regimento_recarga_condominial",
+        "regimento_recarga_condominial",
+        "regimento_recarga_condominial"
+      ],
+      "secoes_recuperadas": [
+        "regimento_recarga_condominial | 3. Agendamento e tempo máximo de uso | 0.774",
+        "regimento_recarga_condominial | 8. Instalação de carregador individual na vaga privativa | 0.7704",
+        "regimento_recarga_condominial | 4. Liberação da vaga após a recarga | 0.7715",
+        "regimento_recarga_condominial | 2. Cadastro e acesso | 0.7604",
+        "regimento_recarga_condominial | 7. Penalidades | 0.7498"
+      ],
+      "docs_citados": [
+        "regimento_recarga_condominial"
+      ],
+      "citacoes": [
+        "Regimento de Recarga Compartilhada em Condomínio — 4. Liberação da vaga após a recarga (p. 1)"
+      ],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 1.96,
+      "tokens": 802,
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.7406464674403993
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta extrai a informação exata do trecho [3], respondendo diretamente ao prazo solicitado na pergunta."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "R13",
+      "tipo": "respondivel",
+      "pergunta": "O que acontece se um morador ocupar indevidamente a vaga de recarga do condomínio pela segunda vez no mesmo semestre?",
+      "resposta": "A ocupação indevida da vaga de recarga do condomínio pela segunda vez no mesmo semestre gera multa de 10% da taxa condominial. Fonte: Regimento de Recarga Compartilhada em Condomínio, seção 7. Penalidades.",
+      "contextos": [
+        "[Regimento de Recarga Compartilhada em Condomínio — 7. Penalidades]\n7. Penalidades\nA ocupação indevida da vaga (seção 4) gera advertência por escrito na primeira ocorrência e multa de\n10% da taxa condominial a partir da segunda ocorrência no mesmo semestre. Três ocorrências no\nsemestre suspendem o acesso da unidade à recarga compartilhada por 30 dias. O uso de equipamento\nproibido (seção 6) gera multa imediata de 20% da taxa condominial.",
+        "[Regimento de Recarga Compartilhada em Condomínio — 8. Instalação de carregador individual na vaga privativa]\n8. Instalação de carregador individual na vaga privativa\nO morador pode solicitar a instalação de carregador individual na própria vaga, às suas custas, mediante\nprojeto elétrico assinado por profissional habilitado e aprovação do síndico. A instalação deve respeitar a\ncapacidade do quadro geral do condomínio e usar controle de carga dinâmico para não ultrapassar o\nlimite de rede do prédio.",
+        "[Regimento de Recarga Compartilhada em Condomínio — 2. Cadastro e acesso]\n2. Cadastro e acesso\nPara usar a recarga compartilhada, o morador deve cadastrar a unidade, a placa do veículo e um cartão\nRFID na administração. Cada unidade pode cadastrar no máximo 2 veículos. Visitantes só podem\nrecarregar com autorização prévia do morador responsável, que assume o custo da recarga.",
+        "[Regimento de Recarga Compartilhada em Condomínio — 1. Objetivo e abrangência]\n1. Objetivo e abrangência\nEste regimento disciplina o uso dos carregadores de veículos elétricos instalados nas áreas comuns do\ncondomínio, garantindo acesso justo entre os moradores, segurança elétrica e rateio correto da energia\nconsumida. Aplica-se a todos os moradores, locatários e visitantes autorizados.",
+        "[Regimento de Recarga Compartilhada em Condomínio — 4. Liberação da vaga após a recarga]\n4. Liberação da vaga após a recarga\nEncerrada a carga (status carga completa), o veículo deve ser retirado da vaga em até 30 minutos. A\npermanência além desse prazo é considerada ocupação indevida e sujeita às penalidades da seção 7. A\nvaga com carregador não pode ser usada como vaga de estacionamento comum."
+      ],
+      "docs_recuperados": [
+        "regimento_recarga_condominial",
+        "regimento_recarga_condominial",
+        "regimento_recarga_condominial",
+        "regimento_recarga_condominial",
+        "regimento_recarga_condominial"
+      ],
+      "secoes_recuperadas": [
+        "regimento_recarga_condominial | 7. Penalidades | 0.7619",
+        "regimento_recarga_condominial | 8. Instalação de carregador individual na vaga privativa | 0.7542",
+        "regimento_recarga_condominial | 2. Cadastro e acesso | 0.7588",
+        "regimento_recarga_condominial | 1. Objetivo e abrangência | 0.7631",
+        "regimento_recarga_condominial | 4. Liberação da vaga após a recarga | 0.7413"
+      ],
+      "docs_citados": [
+        "regimento_recarga_condominial"
+      ],
+      "citacoes": [
+        "Regimento de Recarga Compartilhada em Condomínio — 7. Penalidades (p. 1)"
+      ],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 1.89,
+      "tokens": 794,
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.8118948835503487
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta extrai a penalidade exata para a segunda ocorrência no semestre conforme descrito no trecho [1]."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "R14",
+      "tipo": "respondivel",
+      "pergunta": "Por quanto tempo por dia uma unidade pode reservar o carregador compartilhado do condomínio, e com quanta antecedência?",
+      "resposta": "Uma unidade pode reservar o carregador compartilhado do condomínio por no máximo 4 horas por dia, com antecedência de até 48 horas. Fonte: Regimento de Recarga Compartilhada em Condomínio, seção 3. Agendamento e tempo máximo de uso.",
+      "contextos": [
+        "[Regimento de Recarga Compartilhada em Condomínio — 3. Agendamento e tempo máximo de uso]\n3. Agendamento e tempo máximo de uso\nAs vagas com carregador são reservadas pelo app com até 48 horas de antecedência. Cada reserva\ntem duração máxima de 4 horas por dia por unidade. A reserva não utilizada em até 20 minutos após o\nhorário marcado é cancelada automaticamente e a vaga volta a ficar disponível.",
+        "[Regimento de Recarga Compartilhada em Condomínio — 7. Penalidades]\n7. Penalidades\nA ocupação indevida da vaga (seção 4) gera advertência por escrito na primeira ocorrência e multa de\n10% da taxa condominial a partir da segunda ocorrência no mesmo semestre. Três ocorrências no\nsemestre suspendem o acesso da unidade à recarga compartilhada por 30 dias. O uso de equipamento\nproibido (seção 6) gera multa imediata de 20% da taxa condominial.",
+        "[Regimento de Recarga Compartilhada em Condomínio — 6. Segurança e conduta]\n6. Segurança e conduta\nÉ proibido usar extensões, adaptadores ou carregadores portáteis ligados às tomadas das áreas\ncomuns. Qualquer alarme, cheiro de queimado ou dano ao cabo deve ser comunicado imediatamente à\nadministração, e o carregador deve ser desligado pelo botão de emergência. Somente técnico habilitado\ncontratado pelo condomínio pode abrir, reparar ou reconfigurar os carregadores.",
+        "[Regimento de Recarga Compartilhada em Condomínio — 2. Cadastro e acesso]\n2. Cadastro e acesso\nPara usar a recarga compartilhada, o morador deve cadastrar a unidade, a placa do veículo e um cartão\nRFID na administração. Cada unidade pode cadastrar no máximo 2 veículos. Visitantes só podem\nrecarregar com autorização prévia do morador responsável, que assume o custo da recarga.",
+        "[Regimento de Recarga Compartilhada em Condomínio — 5. Rateio e cobrança da energia]\n5. Rateio e cobrança da energia\nA energia de cada ciclo é medida pelo medidor do carregador e cobrada da unidade que fez a recarga,\njunto com a taxa condominial do mês seguinte, pela tarifa média da concessionária acrescida de 10%\npara manutenção dos equipamentos. Não se aplica a tarifa horária comercial nem a tarifa de ocupação\nociosa do eletroposto comercial."
+      ],
+      "docs_recuperados": [
+        "regimento_recarga_condominial",
+        "regimento_recarga_condominial",
+        "regimento_recarga_condominial",
+        "regimento_recarga_condominial",
+        "regimento_recarga_condominial"
+      ],
+      "secoes_recuperadas": [
+        "regimento_recarga_condominial | 3. Agendamento e tempo máximo de uso | 0.7837",
+        "regimento_recarga_condominial | 7. Penalidades | 0.7576",
+        "regimento_recarga_condominial | 6. Segurança e conduta | 0.7701",
+        "regimento_recarga_condominial | 2. Cadastro e acesso | 0.75",
+        "regimento_recarga_condominial | 5. Rateio e cobrança da energia | 0.7539"
+      ],
+      "docs_citados": [
+        "regimento_recarga_condominial"
+      ],
+      "citacoes": [
+        "Regimento de Recarga Compartilhada em Condomínio — 3. Agendamento e tempo máximo de uso (p. 1)"
+      ],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 1.97,
+      "tokens": 795,
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.8634510252654198
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta extrai precisamente o tempo máximo de uso (4 horas) e a antecedência (48 horas) conforme descrito no trecho [1]."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "R15",
+      "tipo": "respondivel",
+      "pergunta": "Depois de um alarme de falha de aterramento, quem pode religar o carregador?",
+      "resposta": "Após um alarme de falha de aterramento, somente um técnico de campo habilitado pode religar o equipamento, após a realização de uma inspeção presencial. Fonte: Manual Operacional ChargeGrid / EV ChargeOps, seção 6. Classificação e escalonamento de alarmes.",
+      "contextos": [
+        "[FAQ de Carregamento — eletropostos GoodWe ChargeGrid — 7. O carregador mostrou um alarme. O que faço?]\n7. O carregador mostrou um alarme. O que faço?\nAlarmes leves (registrador 10005) não interrompem a carga e podem ser acompanhados pelo app. Se a\ncarga parou com falha, verifique se o plugue está bem encaixado e tente reiniciar a sessão. Alarmes de\nfalha de aterramento, fuga de corrente ou curto-circuito exigem desligar o carregador e acionar um\ntécnico habilitado; não tente religar por conta própria.",
+        "[Regimento de Recarga Compartilhada em Condomínio — 6. Segurança e conduta]\n6. Segurança e conduta\nÉ proibido usar extensões, adaptadores ou carregadores portáteis ligados às tomadas das áreas\ncomuns. Qualquer alarme, cheiro de queimado ou dano ao cabo deve ser comunicado imediatamente à\nadministração, e o carregador deve ser desligado pelo botão de emergência. Somente técnico habilitado\ncontratado pelo condomínio pode abrir, reparar ou reconfigurar os carregadores.",
+        "[Mapa Modbus RTU/RS485 — GoodWe HCA G2 — 3. Códigos de falha do carregador (registradores 10001 a 10008)]\n3. Códigos de falha do carregador (registradores 10001 a 10008)\nDiferente dos códigos de exceção, estes são bits de status lidos via Modbus (\"AC Fault Bytes\") que\nindicam falhas reais do equipamento.\nRegistrador 10001 (AC Fault Bytes 01): bit0 parada de emergência acionada; bit1 sobretensão; bit2\nsobrecorrente; bit3 subtensão; bit4 falha no conector; bit5 S2 desconectado; bit6 sobretemperatura\nambiente; bit7 sobretemperatura do plugue de carga.\nRegistrador 10002 (AC Fault Bytes 02): bit0 falha de controle de acesso; bit1 falha de aterramento\n(grounding fault); bit2 timeout de handshake com o veículo; bit3 falha de comunicação com cartão RF;\nbit4 falha de comunicação com display serial; bit5 falha de comunicação com o medidor embarcado; bit6",
+        "[Mapa Modbus RTU/RS485 — GoodWe HCA G2 — 3. Códigos de falha do carregador (registradores 10001 a 10008)]\nbit4 falha de comunicação com display serial; bit5 falha de comunicação com o medidor embarcado; bit6\nfalha no relé de saída; bit7 falha na trava do plugue.\nRegistrador 10003 (AC Fault Bytes 03): bit0 curto-circuito na saída; bit1 falha de corrente de fuga; bit2\npausa de carregamento por mais de 10 min; bit3 leitura anômala do medidor; bit4 carregador offline ao\niniciar carga por PV/bateria; bit5 potência insuficiente ao iniciar carga por PV/bateria.\nRegistrador 10007 (falhas de hardware): bit0 falha na flash externa; bit1 falha na EEPROM; bit2 falha\nno dispositivo de detecção de vazamento; bit3 alimentação de entrada anormal; bit4 SN não registrado;\nbit5 parâmetros de fábrica anômalos; bit6 firmware não autorizado.",
+        "[Manual Operacional ChargeGrid / EV ChargeOps — 6. Classificação e escalonamento de alarmes]\n6. Classificação e escalonamento de alarmes\nOs eventos são classificados em três níveis. Nível 1 (operacional): alarmes do registrador 10005,\ntimeout de handshake e pausa de carregamento; o próprio operador trata remotamente. Nível 2\n(comunicação): exceções Modbus 0x0001 a 0x0004 e perda de comunicação RS485; o operador segue\no checklist de diagnóstico do mapa Modbus e, se não resolver em 30 minutos, abre chamado técnico.\nNível 3 (segurança elétrica): falha de aterramento, curto-circuito na saída, falha de corrente de fuga e\nsobretemperatura; a operação do carregador é interrompida imediatamente e somente um técnico de\ncampo habilitado pode religar o equipamento, após inspeção presencial."
+      ],
+      "docs_recuperados": [
+        "faq_carregamento",
+        "regimento_recarga_condominial",
+        "mapa_modbus_hca_g2",
+        "mapa_modbus_hca_g2",
+        "manual_operacional_ev_chargeops"
+      ],
+      "secoes_recuperadas": [
+        "faq_carregamento | 7. O carregador mostrou um alarme. O que faço? | 0.787",
+        "regimento_recarga_condominial | 6. Segurança e conduta | 0.6751",
+        "mapa_modbus_hca_g2 | 3. Códigos de falha do carregador (registradores 10001 a 10008) | 0.6432",
+        "mapa_modbus_hca_g2 | 3. Códigos de falha do carregador (registradores 10001 a 10008) | 0.6577",
+        "manual_operacional_ev_chargeops | 6. Classificação e escalonamento de alarmes | 0.6291"
+      ],
+      "docs_citados": [
+        "manual_operacional_ev_chargeops"
+      ],
+      "citacoes": [
+        "Manual Operacional ChargeGrid / EV ChargeOps — 6. Classificação e escalonamento de alarmes (p. 1)"
+      ],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 1.96,
+      "tokens": 1259,
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.7956214655940733
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta extrai a informação exata do trecho [5], respondendo diretamente quem pode religar o equipamento e sob qual condição."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "R16",
+      "tipo": "respondivel",
+      "pergunta": "Ao redistribuir potência entre carregadores ativos no Load Balancing, existe uma potência mínima por carregador?",
+      "resposta": "Sim, ao redistribuir a potência entre carregadores ativos no Load Balancing, deve-se respeitar o mínimo de 4,2 kW por carregador ativo, que é o mínimo do registrador Maximum Charging Power. Fonte: Manual Operacional ChargeGrid / EV ChargeOps, seção 4. Estratégia de Load Balancing.",
+      "contextos": [
+        "[Manual Operacional ChargeGrid / EV ChargeOps — 4. Estratégia de Load Balancing]\n4. Estratégia de Load Balancing\nQuando o limite de rede não comporta um novo veículo, o procedimento padrão é redistribuir a potência\nentre os carregadores ativos: reduzir proporcionalmente os carregadores em curso para liberar a\npotência pedida, respeitando o mínimo de 4,2 kW por carregador ativo (mínimo do registrador Maximum\nCharging Power). Se nem a redistribuição comportar o novo veículo, ele entra em fila e é atendido\nquando um ciclo terminar. Veículos de frota (\"FROTA-\") têm prioridade na fila apenas em contratos que\nprevejam isso.",
+        "[Manual de Produto — EV Charger GoodWe HCA G2 — 6. Load Balancing e controle de carga dinâmico]\n6. Load Balancing e controle de carga dinâmico\nApós ativado, o carregador ajusta a velocidade de carregamento (ou pausa) conforme os dados do\nmedidor e a corrente de conexão à rede configurada, para evitar o disparo do disjuntor principal, e\nretoma automaticamente quando a diferença entre a corrente contratada e a consumida permitir. É esse\nmecanismo que o ChargeGrid aciona ao negar uma solicitação de potência e sugerir \"reduzir X para\nliberar Y\".",
+        "[FAQ de Carregamento — eletropostos GoodWe ChargeGrid — 1. Quanto tempo leva uma recarga completa?]\n1. Quanto tempo leva uma recarga completa?\nDepende da capacidade da bateria do veículo e da potência do carregador. Como referência de cálculo,\no tempo aproximado é a energia a recarregar dividida pela potência efetiva: 44 kWh num carregador de\n11 kW levam cerca de 4 horas. A potência efetiva também é limitada pelo carregador de bordo do\npróprio veículo e pelo controle de carga dinâmico do site.",
+        "[FAQ de Carregamento — eletropostos GoodWe ChargeGrid — 3. Por que minha recarga está mais lenta do que o esperado?]\n3. Por que minha recarga está mais lenta do que o esperado?\nAs causas mais comuns são: o controle de carga dinâmico reduziu a potência para não ultrapassar o\nlimite de rede do site; o carregador de bordo do veículo aceita menos potência que o carregador oferece;\nou o modo de operação está em Prioridade solar, que acompanha a geração fotovoltaica disponível.",
+        "[Manual Operacional ChargeGrid / EV ChargeOps — 3. Autorização de aumento de potência]\n3. Autorização de aumento de potência\nAntes de autorizar um aumento de potência, o operador soma a potência atual de todos os carregadores\ndo mesmo circuito com o aumento pedido e compara com o limite de rede daquele site (registrador\n10026 ou 10039, ou o valor informado pelo responsável da instalação). Se a soma exceder o limite, o\npedido é negado e o excedente em kW é registrado. Não existe limite padrão entre sites: sem o limite do\nsite, a autorização fica pendente até que ele seja informado."
+      ],
+      "docs_recuperados": [
+        "manual_operacional_ev_chargeops",
+        "manual_produto_goodwe_hca_g2",
+        "faq_carregamento",
+        "faq_carregamento",
+        "manual_operacional_ev_chargeops"
+      ],
+      "secoes_recuperadas": [
+        "manual_operacional_ev_chargeops | 4. Estratégia de Load Balancing | 0.8005",
+        "manual_produto_goodwe_hca_g2 | 6. Load Balancing e controle de carga dinâmico | 0.7512",
+        "faq_carregamento | 1. Quanto tempo leva uma recarga completa? | 0.7695",
+        "faq_carregamento | 3. Por que minha recarga está mais lenta do que o esperado? | 0.743",
+        "manual_operacional_ev_chargeops | 3. Autorização de aumento de potência | 0.7075"
+      ],
+      "docs_citados": [
+        "manual_operacional_ev_chargeops"
+      ],
+      "citacoes": [
+        "Manual Operacional ChargeGrid / EV ChargeOps — 4. Estratégia de Load Balancing (p. 1)"
+      ],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 2.06,
+      "tokens": 974,
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.9082784259863029
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta extrai a informação exata contida no trecho [1], respondendo direta e completamente à pergunta."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "R17",
+      "tipo": "respondivel",
+      "pergunta": "Quanto tempo leva, aproximadamente, para recarregar 44 kWh num carregador de 11 kW?",
+      "resposta": "Recarregar 44 kWh num carregador de 11 kW leva cerca de 4 horas. Fonte: FAQ de Carregamento — eletropostos GoodWe ChargeGrid, seção 1. Quanto tempo leva uma recarga completa?",
+      "contextos": [
+        "[FAQ de Carregamento — eletropostos GoodWe ChargeGrid — 1. Quanto tempo leva uma recarga completa?]\n1. Quanto tempo leva uma recarga completa?\nDepende da capacidade da bateria do veículo e da potência do carregador. Como referência de cálculo,\no tempo aproximado é a energia a recarregar dividida pela potência efetiva: 44 kWh num carregador de\n11 kW levam cerca de 4 horas. A potência efetiva também é limitada pelo carregador de bordo do\npróprio veículo e pelo controle de carga dinâmico do site.",
+        "[Manual Operacional ChargeGrid / EV ChargeOps — 4. Estratégia de Load Balancing]\n4. Estratégia de Load Balancing\nQuando o limite de rede não comporta um novo veículo, o procedimento padrão é redistribuir a potência\nentre os carregadores ativos: reduzir proporcionalmente os carregadores em curso para liberar a\npotência pedida, respeitando o mínimo de 4,2 kW por carregador ativo (mínimo do registrador Maximum\nCharging Power). Se nem a redistribuição comportar o novo veículo, ele entra em fila e é atendido\nquando um ciclo terminar. Veículos de frota (\"FROTA-\") têm prioridade na fila apenas em contratos que\nprevejam isso.",
+        "[FAQ de Carregamento — eletropostos GoodWe ChargeGrid — 4. Como é calculado o valor da minha recarga?]\n4. Como é calculado o valor da minha recarga?\nNo eletroposto comercial, o valor é o consumo em kWh (meterStop menos meterStart) multiplicado pela\ntarifa do posto horário em que a recarga ocorreu, conforme as tabelas tarifárias. Veículos de frota\ncadastrada têm tarifa fixa. Em condomínios, vale o rateio definido no regimento condominial.",
+        "[Manual de Produto — EV Charger GoodWe HCA G2 — 5. Limite de rede e disjuntor de entrada]\n5. Limite de rede e disjuntor de entrada\n| Power Limit ( | 10039, faixa | de 4,2 a 22,0 kW | conforme o modelo | ). Cada eletroposto |",
+        "[Regimento de Recarga Compartilhada em Condomínio — 3. Agendamento e tempo máximo de uso]\n3. Agendamento e tempo máximo de uso\nAs vagas com carregador são reservadas pelo app com até 48 horas de antecedência. Cada reserva\ntem duração máxima de 4 horas por dia por unidade. A reserva não utilizada em até 20 minutos após o\nhorário marcado é cancelada automaticamente e a vaga volta a ficar disponível."
+      ],
+      "docs_recuperados": [
+        "faq_carregamento",
+        "manual_operacional_ev_chargeops",
+        "faq_carregamento",
+        "manual_produto_goodwe_hca_g2",
+        "regimento_recarga_condominial"
+      ],
+      "secoes_recuperadas": [
+        "faq_carregamento | 1. Quanto tempo leva uma recarga completa? | 0.8198",
+        "manual_operacional_ev_chargeops | 4. Estratégia de Load Balancing | 0.672",
+        "faq_carregamento | 4. Como é calculado o valor da minha recarga? | 0.6787",
+        "manual_produto_goodwe_hca_g2 | 5. Limite de rede e disjuntor de entrada | 0.6587",
+        "regimento_recarga_condominial | 3. Agendamento e tempo máximo de uso | 0.6412"
+      ],
+      "docs_citados": [
+        "faq_carregamento"
+      ],
+      "citacoes": [
+        "FAQ de Carregamento — eletropostos GoodWe ChargeGrid — 1. Quanto tempo leva uma recarga completa? (p. 1)"
+      ],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 1.88,
+      "tokens": 857,
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.9211672114244663
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta extrai a informação exata contida no trecho [1], respondendo diretamente à pergunta."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "R18",
+      "tipo": "respondivel",
+      "pergunta": "Qual a potência nominal do modelo GW30K-HCA-20?",
+      "resposta": "O modelo GW30K-HCA-20 não existe na linha HCA G2. Os únicos modelos disponíveis são o GW7K-HCA-20 (7 kW), GW11K-HCA-20 (11 kW) e GW22K-HCA-20 (22 kW). Fonte: Manual de Produto — EV Charger GoodWe HCA G2, seção 1. Modelos da linha HCA G2.",
+      "contextos": [
+        "[Manual de Produto — EV Charger GoodWe HCA G2 — 1. Modelos da linha HCA G2]\n1. Modelos da linha HCA G2\nA linha HCA G2 tem 3 modelos por potência nominal (não é um único modelo com potência ajustável em\nfaixa livre):\n| Modelo | Fases | Potência nominal | Corrente nominal | Tensão de entrada |\n| GW7K-HCA-20 | Monofásico | 7 kW | 32 A | 220 V (L/N/PE) |\n| GW11K-HCA-20 | Trifásico | 11 kW | 16 A | 380 V (3L/N/PE) |\n| GW22K-HCA-20 | Trifásico | 22 kW | 32 A | 380 V (3L/N/PE) |\nNão existem outros modelos na linha HCA G2 além desses três (por exemplo, não há um modelo de 30\nkW ou de corrente contínua nesta linha).\nFaixa de ajuste de potência de carregamento (registrador Modbus Maximum Charging Power): 4,2\nkW a 22,0 kW, respeitando o máximo do modelo instalado.",
+        "[Mapa Modbus RTU/RS485 — GoodWe HCA G2 — 4. Registradores operacionais]\n4. Registradores operacionais\n| Registrador |  | Nome |  |  | Uso |  |\n| 10017 |  | Charging Station Status |  |  | 00 ocioso sem plugue; 01 ocioso com plugue; 02 handshake com veículo; 03 carregando; 04 carga completa; 05 alarme; 06 início agendado; 07 manutenção; 08 falha ao iniciar; 09 atualizando firmware; 10 interrompido (PV/ bateria insuficiente) |  |\n|  |  |  |  |  |  |  |\n|  |  |  |  |  |  |  |\n| 10026 |  | Household circuit breaker rated current |  |  | Corrente nominal do disjuntor de entrada: fonte real do \"Limite da Rede\" |  |\n| 10029 |  | Maximum Charging Power |  |  | Potência máxima configurada (4,2 a 22,0 kW conforme o modelo) |  |\n| 10039 |  | Maximum Grid Electricity Draw Power |  |  | Limite de compra da rede (Grid Power Limit), usado pelo controle de carga dinâmico |  |",
+        "[Manual de Produto — EV Charger GoodWe HCA G2 — 5. Limite de rede e disjuntor de entrada]\n5. Limite de rede e disjuntor de entrada\n| Power Limit ( | 10039, faixa | de 4,2 a 22,0 kW | conforme o modelo | ). Cada eletroposto |",
+        "[Manual de Produto — EV Charger GoodWe HCA G2 — 7. Uso desta referência pelo ChargeGrid Assistant]\n7. Uso desta referência pelo ChargeGrid Assistant\nAo orientar sobre limite de potência, cite o registrador Household Circuit Breaker Rated\nCurrent ou Grid Power Limit como fonte real do dado quando o operador mencionar leitura do\nequipamento. Nunca aplique um valor de referência fixo entre instalações e nunca informe uma\nespecificação (potência, corrente, certificação, garantia, preço) que não esteja listada neste manual.",
+        "[Mapa Modbus RTU/RS485 — GoodWe HCA G2 — 2. Códigos de exceção Modbus]\n| 0x0003 | Illegal Data Value | Valor fora da faixa aceita pelo registrador (ex.: potência acima do limite do hardware) | Reduzir o valor ao intervalo permitido (ex.: 4,2 a 22,0 kW para Maximum Charging Power) |\n| 0x0004 | Slave Device Failure | Falha interna no carregador ao processar o comando | Reiniciar o carregador; se persistir, abrir chamado técnico |\nQualquer código fora desta tabela (ex.: um código de 2 dígitos como \"0B\") não consta no mapa Modbus\ndo HCA G2 e deve ser confirmado no equipamento."
+      ],
+      "docs_recuperados": [
+        "manual_produto_goodwe_hca_g2",
+        "mapa_modbus_hca_g2",
+        "manual_produto_goodwe_hca_g2",
+        "manual_produto_goodwe_hca_g2",
+        "mapa_modbus_hca_g2"
+      ],
+      "secoes_recuperadas": [
+        "manual_produto_goodwe_hca_g2 | 1. Modelos da linha HCA G2 | 0.7846",
+        "mapa_modbus_hca_g2 | 4. Registradores operacionais | 0.7167",
+        "manual_produto_goodwe_hca_g2 | 5. Limite de rede e disjuntor de entrada | 0.7093",
+        "manual_produto_goodwe_hca_g2 | 7. Uso desta referência pelo ChargeGrid Assistant | 0.7159",
+        "mapa_modbus_hca_g2 | 2. Códigos de exceção Modbus | 0.7059"
+      ],
+      "docs_citados": [
+        "manual_produto_goodwe_hca_g2"
+      ],
+      "citacoes": [
+        "Manual de Produto — EV Charger GoodWe HCA G2 — 1. Modelos da linha HCA G2 (p. 1)"
+      ],
+      "fora_da_base": false,
+      "bloqueado": false,
+      "latencia_s": 2.76,
+      "tokens": 1231,
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.8506175858252186
+      },
+      "rubrica": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "motivo": "A resposta afirma corretamente que o modelo não existe e lista os modelos disponíveis com suas potências, baseando-se exclusivamente no trecho [1]."
+      },
+      "acerto_factual": true,
+      "recusou": false
+    },
+    {
+      "id": "X01",
+      "tipo": "recusa",
+      "pergunta": "Qual é o prazo de garantia, em anos, do carregador GW22K-HCA-20?",
+      "resposta": "A informação sobre o prazo de garantia do carregador GW22K-HCA-20 não consta na base de conhecimento disponível.",
+      "contextos": [],
+      "docs_recuperados": [],
+      "secoes_recuperadas": [],
+      "docs_citados": [],
+      "citacoes": [],
+      "fora_da_base": true,
+      "bloqueado": false,
+      "latencia_s": 1.82,
+      "tokens": 61,
+      "acerto_factual": null,
+      "recusou": true
+    },
+    {
+      "id": "X02",
+      "tipo": "recusa",
+      "pergunta": "Qual é o preço do kWh da concessionária Enel em São Paulo hoje?",
+      "resposta": "A informação sobre o preço do kWh da concessionária Enel em São Paulo não consta na base de conhecimento.",
+      "contextos": [],
+      "docs_recuperados": [],
+      "secoes_recuperadas": [],
+      "docs_citados": [],
+      "citacoes": [],
+      "fora_da_base": true,
+      "bloqueado": false,
+      "latencia_s": 1.64,
+      "tokens": 55,
+      "acerto_factual": null,
+      "recusou": true
+    },
+    {
+      "id": "X03",
+      "tipo": "recusa",
+      "pergunta": "Qual a melhor receita de bolo de chocolate?",
+      "resposta": "Pedido fora do domínio ChargeGrid/GoodWe (assunto bloqueado por escopo). Posso ajudar com orquestração de potência, faturamento ou diagnóstico de carregadores GoodWe.",
+      "contextos": [],
+      "docs_recuperados": [],
+      "secoes_recuperadas": [],
+      "docs_citados": [],
+      "citacoes": [],
+      "fora_da_base": false,
+      "bloqueado": true,
+      "latencia_s": 0.01,
+      "tokens": 48,
+      "acerto_factual": null,
+      "recusou": true
+    }
+  ]
+}
